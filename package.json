@@ -1,0 +1,82 @@
+{
+  "name": "codefocus",
+  "version": "1.0.0",
+  "description": "**CodeFocus** é um aplicativo desktop (.exe) criado para programadores que buscam foco, disciplina e produtividade com a técnica Pomodoro. Ele combina ciclos inteligentes de trabalho com uma integração contextual ao Git, permitindo registrar commits ao final de cada ciclo – apenas se você realmente estiver voltando ao código.",
+  "main": "public/electron.js",
+  "homepage": "https://github.com/sthevan027/CodeFocus#readme",
+  "scripts": {
+    "start": "react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "electron": "wait-on tcp:3000 && cross-env BROWSER=none electron .",
+    "electron-dev": "concurrently \"npm start\" \"npm run electron\"",
+    "electron-pack": "npm run build && electron-builder -c.extraMetadata.main=build/electron.js",
+    "preelectron-pack": "npm run build && cp public/electron.js build/ && cp public/index.html build/"
+  },
+  "build": {
+    "appId": "com.codefocus.app",
+    "productName": "CodeFocus",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "build/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sthevan027/CodeFocus.git"
+  },
+  "keywords": [
+    "pomodoro",
+    "productivity",
+    "git",
+    "timer",
+    "focus",
+    "electron",
+    "react"
+  ],
+  "author": "CodeFocus Team",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/sthevan027/CodeFocus/issues"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "simple-git": "^3.20.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.16",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "postcss": "^8.4.31",
+    "tailwindcss": "^3.3.5",
+    "wait-on": "^7.2.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  }
+}
