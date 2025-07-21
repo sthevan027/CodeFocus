@@ -1,30 +1,28 @@
-import React, { useState } from 'react';
-import { useTimer } from '../context/TimerContext';
+import React, { useState, useEffect } from 'react';
 
 const Timer = () => {
-  const {
-    timeLeft,
-    isRunning,
-    isPaused,
-    currentPhase,
-    cycleName,
-    setCycleName,
-    startFocus,
-    startShortBreak,
-    startLongBreak,
-    pauseTimer,
-    resumeTimer,
-    resetTimer,
-    skipTimer,
-    settings,
-  } = useTimer();
-
+  const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutos em segundos
+  const [isRunning, setIsRunning] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState('focus');
+  const [cycleName, setCycleName] = useState('');
   const [showCycleInput, setShowCycleInput] = useState(false);
 
-  // Calcular progresso para o ring
-  const totalTime = settings[currentPhase === 'focus' ? 'focusTime' : 
-    currentPhase === 'shortBreak' ? 'shortBreakTime' : 'longBreakTime'] * 60;
-  const progress = ((totalTime - timeLeft) / totalTime) * 100;
+  // Timer principal
+  useEffect(() => {
+    let interval = null;
+    
+    if (isRunning && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft(timeLeft - 1);
+      }, 1000);
+    } else if (timeLeft === 0) {
+      setIsRunning(false);
+      alert('Ciclo finalizado!');
+    }
+
+    return () => clearInterval(interval);
+  }, [isRunning, timeLeft]);
 
   // Formatar tempo
   const formatTime = (seconds) => {
@@ -58,6 +56,44 @@ const Timer = () => {
       default:
         return '';
     }
+  };
+
+  const startFocus = () => {
+    setTimeLeft(25 * 60);
+    setCurrentPhase('focus');
+    setIsRunning(true);
+    setIsPaused(false);
+  };
+
+  const startShortBreak = () => {
+    setTimeLeft(5 * 60);
+    setCurrentPhase('shortBreak');
+    setIsRunning(true);
+    setIsPaused(false);
+  };
+
+  const startLongBreak = () => {
+    setTimeLeft(15 * 60);
+    setCurrentPhase('longBreak');
+    setIsRunning(true);
+    setIsPaused(false);
+  };
+
+  const pauseTimer = () => {
+    setIsRunning(false);
+    setIsPaused(true);
+  };
+
+  const resumeTimer = () => {
+    setIsRunning(true);
+    setIsPaused(false);
+  };
+
+  const resetTimer = () => {
+    setIsRunning(false);
+    setIsPaused(false);
+    setTimeLeft(25 * 60);
+    setCurrentPhase('focus');
   };
 
   const handleStartFocus = () => {
@@ -95,7 +131,7 @@ const Timer = () => {
             className={getPhaseColor()}
             style={{ 
               strokeDasharray: 283,
-              strokeDashoffset: 283 - (283 * progress) / 100,
+              strokeDashoffset: 283 - (283 * ((25 * 60 - timeLeft) / (25 * 60))) / 100,
               transform: 'rotate(-90deg)', 
               transformOrigin: '50% 50%',
               transition: 'stroke-dashoffset 1s ease-in-out'
@@ -105,7 +141,7 @@ const Timer = () => {
 
         {/* Timer Display */}
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`timer-display ${getPhaseColor()} transition-all duration-300`}>
+          <div className={`text-6xl font-bold text-center font-mono ${getPhaseColor()} transition-all duration-300`}>
             {formatTime(timeLeft)}
           </div>
           
@@ -129,7 +165,7 @@ const Timer = () => {
             placeholder="Nome do seu foco atual..."
             value={cycleName}
             onChange={(e) => setCycleName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg glass-effect text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-500"
+            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyPress={(e) => {
               if (e.key === 'Enter' && cycleName.trim()) {
                 setShowCycleInput(false);
@@ -147,21 +183,21 @@ const Timer = () => {
           <>
             <button
               onClick={handleStartFocus}
-              className="btn-primary hover:scale-105 transition-transform"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               🎯 Iniciar Foco
             </button>
             
             <button
               onClick={startShortBreak}
-              className="btn-secondary hover:scale-105 transition-transform"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               ☕ Pausa Curta
             </button>
             
             <button
               onClick={startLongBreak}
-              className="btn-secondary hover:scale-105 transition-transform"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               🛋️ Pausa Longa
             </button>
@@ -172,16 +208,9 @@ const Timer = () => {
           <>
             <button
               onClick={pauseTimer}
-              className="btn-secondary hover:scale-105 transition-transform"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               ⏸️ Pausar
-            </button>
-            
-            <button
-              onClick={skipTimer}
-              className="btn-secondary hover:scale-105 transition-transform"
-            >
-              ⏭️ Pular
             </button>
           </>
         )}
@@ -190,14 +219,14 @@ const Timer = () => {
           <>
             <button
               onClick={resumeTimer}
-              className="btn-primary hover:scale-105 transition-transform"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               ▶️ Continuar
             </button>
             
             <button
               onClick={resetTimer}
-              className="btn-secondary hover:scale-105 transition-transform"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               🔄 Resetar
             </button>

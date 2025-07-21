@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "**CodeFocus** é um aplicativo desktop (.exe) criado para programadores que buscam foco, disciplina e produtividade com a técnica Pomodoro. Ele combina ciclos inteligentes de trabalho com uma integração contextual ao Git, permitindo registrar commits ao final de cada ciclo – apenas se você realmente estiver voltando ao código.",
   "main": "public/electron.js",
-  "homepage": "https://github.com/sthevan027/CodeFocus#readme",
+  "homepage": ".",
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",

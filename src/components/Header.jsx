@@ -1,13 +1,14 @@
 import React from 'react';
-import { useTheme } from '../context/ThemeContext';
 
 const Header = ({ onSettingsClick }) => {
-  const { isDark, toggleTheme } = useTheme();
+  const toggleTheme = () => {
+    console.log('Toggle theme clicked');
+  };
 
   return (
     <header className="flex justify-between items-center mb-8">
       <div className="flex items-center space-x-3">
-        <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center hover:scale-105 transition-transform">
+        <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center hover:scale-105 transition-transform">
           <span className="text-white font-bold text-lg">⚡</span>
         </div>
         <div>
@@ -19,15 +20,15 @@ const Header = ({ onSettingsClick }) => {
       <div className="flex items-center space-x-2">
         <button
           onClick={toggleTheme}
-          className="p-2 rounded-lg glass-effect hover:bg-white/20 transition-colors hover:scale-105"
-          title={isDark ? 'Mudar para modo claro' : 'Mudar para modo escuro'}
+          className="p-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors hover:scale-105"
+          title="Mudar tema"
         >
-          {isDark ? '☀️' : '🌙'}
+          🌙
         </button>
 
         <button
           onClick={onSettingsClick}
-          className="p-2 rounded-lg glass-effect hover:bg-white/20 transition-colors hover:scale-105"
+          className="p-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors hover:scale-105"
           title="Configurações"
         >
           ⚙️
