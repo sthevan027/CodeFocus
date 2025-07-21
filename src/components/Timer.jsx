@@ -7,6 +7,26 @@ const Timer = () => {
   const [currentPhase, setCurrentPhase] = useState('focus');
   const [cycleName, setCycleName] = useState('');
   const [showCycleInput, setShowCycleInput] = useState(false);
+  
+  // Formatar tempo para display digital
+  const formatTimeDigital = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return {
+      hours: hours.toString().padStart(2, '0'),
+      minutes: mins.toString().padStart(2, '0'),
+      seconds: secs.toString().padStart(2, '0')
+    };
+  };
+
+  // Inicializar flip states com valores corretos
+  const initialTime = formatTimeDigital(25 * 60);
+  const [flipStates, setFlipStates] = useState({
+    hours: { current: initialTime.hours, next: initialTime.hours, isFlipping: false },
+    minutes: { current: initialTime.minutes, next: initialTime.minutes, isFlipping: false },
+    seconds: { current: initialTime.seconds, next: initialTime.seconds, isFlipping: false }
+  });
 
   // Timer principal
   useEffect(() => {
@@ -24,35 +44,70 @@ const Timer = () => {
     return () => clearInterval(interval);
   }, [isRunning, timeLeft]);
 
-  // Formatar tempo
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
+  // Atualizar flip states quando o tempo muda
+  useEffect(() => {
+    const { hours, minutes, seconds } = formatTimeDigital(timeLeft);
+    
+    setFlipStates(prev => {
+      const newState = { ...prev };
+      
+      // Verificar se cada dígito mudou
+      if (hours !== prev.hours.current) {
+        newState.hours = { current: prev.hours.current, next: hours, isFlipping: true };
+        setTimeout(() => {
+          setFlipStates(current => ({
+            ...current,
+            hours: { current: hours, next: hours, isFlipping: false }
+          }));
+        }, 300);
+      }
+      
+      if (minutes !== prev.minutes.current) {
+        newState.minutes = { current: prev.minutes.current, next: minutes, isFlipping: true };
+        setTimeout(() => {
+          setFlipStates(current => ({
+            ...current,
+            minutes: { current: minutes, next: minutes, isFlipping: false }
+          }));
+        }, 300);
+      }
+      
+      if (seconds !== prev.seconds.current) {
+        newState.seconds = { current: prev.seconds.current, next: seconds, isFlipping: true };
+        setTimeout(() => {
+          setFlipStates(current => ({
+            ...current,
+            seconds: { current: seconds, next: seconds, isFlipping: false }
+          }));
+        }, 300);
+      }
+      
+      return newState;
+    });
+  }, [timeLeft]);
 
   // Obter cor baseada na fase
   const getPhaseColor = () => {
     switch (currentPhase) {
       case 'focus':
-        return 'text-red-400';
+        return 'from-red-500 to-red-600';
       case 'shortBreak':
-        return 'text-green-400';
+        return 'from-green-500 to-green-600';
       case 'longBreak':
-        return 'text-blue-400';
+        return 'from-blue-500 to-blue-600';
       default:
-        return 'text-white';
+        return 'from-white to-gray-300';
     }
   };
 
   const getPhaseName = () => {
     switch (currentPhase) {
       case 'focus':
-        return 'Foco';
+        return 'FOCUS';
       case 'shortBreak':
-        return 'Pausa Curta';
+        return 'SHORT BREAK';
       case 'longBreak':
-        return 'Pausa Longa';
+        return 'LONG BREAK';
       default:
         return '';
     }
@@ -104,56 +159,81 @@ const Timer = () => {
     startFocus();
   };
 
+  // Componente Flip Card
+  const FlipCard = ({ value, label }) => (
+    <div className="text-center">
+      <div className="relative bg-white/10 backdrop-blur-md rounded-xl p-4 border border-white/20 shadow-lg overflow-hidden">
+        {/* Container do número */}
+        <div className="relative h-12 flex items-center justify-center">
+          <span className="text-4xl font-bold tracking-wider text-white">
+            {value}
+          </span>
+        </div>
+      </div>
+      <div className="text-white/80 text-xs font-medium mt-2 tracking-wider">
+        {label}
+      </div>
+    </div>
+  );
+
+  // Obter valores atuais do timer
+  const { hours, minutes, seconds } = formatTimeDigital(timeLeft);
+
   return (
     <div className="flex flex-col items-center">
-      {/* Progress Ring */}
-      <div className="relative w-80 h-80 mb-8">
-        <svg className="w-full h-full" viewBox="0 0 100 100">
-          {/* Background circle */}
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="rgba(255, 255, 255, 0.1)"
-            strokeWidth="4"
-          />
-          
-          {/* Progress circle */}
-          <circle
-            cx="50"
-            cy="50"
-            r="45"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="4"
-            strokeLinecap="round"
-            className={getPhaseColor()}
-            style={{ 
-              strokeDasharray: 283,
-              strokeDashoffset: 283 - (283 * ((25 * 60 - timeLeft) / (25 * 60))) / 100,
-              transform: 'rotate(-90deg)', 
-              transformOrigin: '50% 50%',
-              transition: 'stroke-dashoffset 1s ease-in-out'
-            }}
-          />
-        </svg>
+      {/* Relógio Digital */}
+      <div className="relative w-96 mb-8">
+        {/* Título COUNTDOWN */}
+        <div className="text-center mb-6">
+          <h1 className="text-3xl font-bold text-white tracking-wider">
+            COUNTDOWN
+          </h1>
+        </div>
 
-        {/* Timer Display */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <div className={`text-6xl font-bold text-center font-mono ${getPhaseColor()} transition-all duration-300`}>
-            {formatTime(timeLeft)}
-          </div>
-          
-          <p className="text-gray-300 text-lg font-medium mt-2">
+        {/* Display do Timer */}
+        <div className="flex justify-center items-center space-x-4 mb-6">
+          {/* Horas */}
+          <FlipCard 
+            value={hours}
+            label="HOUR"
+          />
+
+          {/* Separador */}
+          <div className="text-4xl font-bold text-white">:</div>
+
+          {/* Minutos */}
+          <FlipCard 
+            value={minutes}
+            label="MIN"
+          />
+
+          {/* Separador */}
+          <div className="text-4xl font-bold text-white">:</div>
+
+          {/* Segundos */}
+          <FlipCard 
+            value={seconds}
+            label="SEC"
+          />
+        </div>
+
+        {/* Fase atual */}
+        <div className="text-center mb-4">
+          <div className="text-white/90 text-sm font-medium tracking-wider">
             {getPhaseName()}
-          </p>
-
+          </div>
           {cycleName && currentPhase === 'focus' && (
-            <p className="text-gray-400 text-sm mt-1 max-w-xs text-center truncate">
+            <div className="text-white/60 text-xs mt-1 max-w-xs mx-auto truncate">
               {cycleName}
-            </p>
+            </div>
           )}
+        </div>
+
+        {/* Subtítulo */}
+        <div className="text-center">
+          <div className="text-white/70 text-sm tracking-wider">
+            with POMODORO TECHNIQUE
+          </div>
         </div>
       </div>
 
@@ -183,21 +263,21 @@ const Timer = () => {
           <>
             <button
               onClick={handleStartFocus}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               🎯 Iniciar Foco
             </button>
             
             <button
               onClick={startShortBreak}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               ☕ Pausa Curta
             </button>
             
             <button
               onClick={startLongBreak}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               🛋️ Pausa Longa
             </button>
@@ -208,7 +288,7 @@ const Timer = () => {
           <>
             <button
               onClick={pauseTimer}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               ⏸️ Pausar
             </button>
@@ -219,14 +299,14 @@ const Timer = () => {
           <>
             <button
               onClick={resumeTimer}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               ▶️ Continuar
             </button>
             
             <button
               onClick={resetTimer}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95"
+              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
             >
               🔄 Resetar
             </button>
