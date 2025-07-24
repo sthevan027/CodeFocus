@@ -55,16 +55,36 @@
 - [ ] **Push Automático** - Configuração opcional
 
 ### 📊 Dados e Relatórios
-- [ ] **Histórico Local** - Salvar ciclos em `history.json`
-- [ ] **Relatório Diário** - Gerar `.txt` com resumo
-- [ ] **Persistência** - Manter estado entre sessões
-- [ ] **Exportação** - Formato JSON para análise
+- [x] **Histórico Local** - Salvar ciclos em `history.json`
+- [x] **Relatório Diário** - Gerar `.txt` com resumo
+- [x] **Persistência** - Manter estado entre sessões
+- [x] **Exportação** - Formato JSON para análise
 
 ### 🏗️ Build e Deploy
-- [ ] **Configuração Electron** - Setup completo do app desktop
-- [ ] **Build .exe** - Gerar executável Windows
-- [ ] **Instalador** - Criar instalador profissional
+- [x] **Configuração Electron** - Setup completo do app desktop
+- [x] **Build .exe** - Gerar executável Windows
+- [x] **Instalador** - Criar instalador profissional
 - [ ] **Documentação** - README e guias de uso
+
+### 🐛 Problemas Críticos do .exe
+- [x] **Caminhos de arquivos** - Electron não encontra recursos em build
+- [ ] **Dependência simple-git** - Pode falhar em ambiente nativo
+- [ ] **Permissões Windows** - Executável pode ser bloqueado pelo antivírus
+- [x] **Ícone faltando** - Referência para `public/icon.ico` não existe
+- [x] **Context isolation** - Configuração pode causar problemas de segurança
+- [x] **Node integration** - Pode não funcionar em build de produção
+- [x] **Recursos estáticos** - CSS/JS podem não carregar corretamente
+- [x] **Tamanho do executável** - Build pode ficar muito pesado
+
+### 🔧 Soluções para .exe
+- [x] **Criar ícone** - Gerar `public/icon.ico` e `public/icon.png`
+- [x] **Configurar electron-builder** - Ajustar `package.json` build
+- [ ] **Testar simple-git** - Verificar compatibilidade nativa
+- [x] **Configurar contextIsolation** - Segurança adequada
+- [x] **Otimizar recursos** - Reduzir tamanho do build
+- [x] **Testar em Windows** - Verificar funcionamento real
+- [ ] **Configurar code signing** - Assinar executável (opcional)
+- [x] **Criar instalador NSIS** - Configurar `nsis` no electron-builder
 
 ## 🚀 Pós-MVP (Expansões)
 
@@ -137,6 +157,8 @@
 4. **Timer básico funcionando** - Ciclos 25/5/15 implementados
 5. **Interface visual** - Progress ring e controles funcionando
 6. **Novo relógio analógico** - Implementado com ponteiros animados e design minimalista
+7. **Electron funcionando** - App desktop carregando corretamente
+8. **Build .exe criado** - Executável gerado com sucesso (89MB)
 
 ### Próximos Passos
 1. **Adicionar contextos gradualmente** - ThemeContext e TimerContext

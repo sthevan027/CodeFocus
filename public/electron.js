@@ -1,35 +1,46 @@
 const { app, BrowserWindow, ipcMain, Notification } = require('electron');
 const path = require('path');
-const isDev = process.env.NODE_ENV === 'development';
+const fs = require('fs');
+const os = require('os');
+
+// Forçar modo desenvolvimento para sempre carregar localhost:3000
+const isDev = true; // Sempre usar localhost em desenvolvimento
 
 let mainWindow;
 
 function createWindow() {
   // Criar a janela do navegador
   mainWindow = new BrowserWindow({
-    width: 400,
-    height: 600,
-    minWidth: 350,
+    width: 800,
+    height: 700,
+    minWidth: 600,
     minHeight: 500,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+      allowRunningInsecureContent: true,
+      preload: path.join(__dirname, 'preload.js')
     },
-    icon: path.join(__dirname, 'icon.png'),
-    titleBarStyle: 'default',
     show: false,
     frame: true,
-    transparent: false,
-    resizable: true,
-    alwaysOnTop: false
+    resizable: true
   });
 
-  // Carregar o arquivo index.html do app
-  const startUrl = isDev 
-    ? 'http://localhost:3000' 
-    : `file://${path.join(__dirname, 'index.html')}`;
+  // SEMPRE carregar localhost:3000
+  const startUrl = 'http://localhost:3000';
   
+  console.log('Loading URL:', startUrl);
+  
+  // Adicionar listeners para debug
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.log('Failed to load:', errorDescription, validatedURL);
+  });
+
+  mainWindow.webContents.on('dom-ready', () => {
+    console.log('DOM is ready');
+  });
+
   mainWindow.loadURL(startUrl);
 
   // Mostrar a janela quando estiver pronta
@@ -37,10 +48,8 @@ function createWindow() {
     mainWindow.show();
   });
 
-  // Abrir DevTools em desenvolvimento
-  if (isDev) {
-    mainWindow.webContents.openDevTools();
-  }
+  // SEMPRE abrir DevTools para debug
+  mainWindow.webContents.openDevTools();
 
   // Emitido quando a janela é fechada
   mainWindow.on('closed', () => {
@@ -83,6 +92,34 @@ ipcMain.handle('show-notification', async (event, title, body) => {
 
 ipcMain.handle('get-app-version', () => {
   return app.getVersion();
+});
+
+// Caminho do arquivo de histórico na pasta do usuário
+const historyPath = path.join(app.getPath('userData'), 'history.json');
+
+// Handler para salvar ciclo
+ipcMain.handle('save-cycle', async (event, cycle) => {
+  let history = [];
+  try {
+    if (fs.existsSync(historyPath)) {
+      const data = fs.readFileSync(historyPath, 'utf-8');
+      history = JSON.parse(data);
+    }
+  } catch (e) { history = []; }
+  history.push(cycle);
+  fs.writeFileSync(historyPath, JSON.stringify(history, null, 2));
+  return true;
+});
+
+// Handler para carregar histórico
+ipcMain.handle('load-history', async () => {
+  try {
+    if (fs.existsSync(historyPath)) {
+      const data = fs.readFileSync(historyPath, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (e) {}
+  return [];
 });
 
 // Prevenir múltiplas instâncias do app

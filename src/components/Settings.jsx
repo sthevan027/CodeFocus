@@ -1,8 +1,9 @@
 import React from 'react';
 import { useTimer } from '../context/TimerContext';
+import { exportHistoryToJSON, exportDailyReportTxt } from '../utils/exportUtils';
 
 const Settings = ({ isOpen, onClose }) => {
-  const { settings, setSettings } = useTimer();
+  const { settings, setSettings, completedCycles } = useTimer();
 
   const handleSettingChange = (key, value) => {
     setSettings(prev => ({
@@ -128,10 +129,22 @@ const Settings = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex flex-col gap-2">
+          <button
+            onClick={() => exportHistoryToJSON(completedCycles)}
+            className="btn-secondary hover:scale-105 transition-transform mb-2"
+          >
+            Exportar Histórico (JSON)
+          </button>
+          <button
+            onClick={() => exportDailyReportTxt(completedCycles)}
+            className="btn-secondary hover:scale-105 transition-transform"
+          >
+            Exportar Relatório Diário (.txt)
+          </button>
           <button
             onClick={onClose}
-            className="btn-primary hover:scale-105 transition-transform"
+            className="btn-primary hover:scale-105 transition-transform mt-2"
           >
             Salvar
           </button>

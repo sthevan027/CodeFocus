@@ -7,6 +7,7 @@ const Timer = () => {
   const [currentPhase, setCurrentPhase] = useState('focus');
   const [cycleName, setCycleName] = useState('');
   const [showCycleInput, setShowCycleInput] = useState(false);
+  const [customFocusMinutes, setCustomFocusMinutes] = useState('');
   
   // Formatar tempo para display digital
   const formatTimeDigital = (seconds) => {
@@ -114,7 +115,10 @@ const Timer = () => {
   };
 
   const startFocus = () => {
-    setTimeLeft(25 * 60);
+    const minutes = customFocusMinutes && !isNaN(Number(customFocusMinutes)) && Number(customFocusMinutes) > 0
+      ? Number(customFocusMinutes)
+      : 25;
+    setTimeLeft(minutes * 60);
     setCurrentPhase('focus');
     setIsRunning(true);
     setIsPaused(false);
@@ -237,9 +241,9 @@ const Timer = () => {
         </div>
       </div>
 
-      {/* Cycle Name Input */}
+      {/* Cycle Name Input + Custom Minutes */}
       {showCycleInput && (
-        <div className="mb-6 w-full max-w-md transition-all duration-300">
+        <div className="mb-6 w-full max-w-md transition-all duration-300 flex flex-col gap-2">
           <input
             type="text"
             placeholder="Nome do seu foco atual..."
@@ -253,6 +257,15 @@ const Timer = () => {
               }
             }}
             autoFocus
+          />
+          <input
+            type="number"
+            min="1"
+            max="180"
+            placeholder="Tempo de foco (min)"
+            value={customFocusMinutes}
+            onChange={e => setCustomFocusMinutes(e.target.value.replace(/[^0-9]/g, ''))}
+            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
       )}

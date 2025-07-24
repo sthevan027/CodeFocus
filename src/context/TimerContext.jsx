@@ -43,6 +43,15 @@ export const TimerProvider = ({ children }) => {
     localStorage.setItem('codefocus-settings', JSON.stringify(settings));
   }, [settings]);
 
+  // Carregar histórico salvo do arquivo local (Electron)
+  useEffect(() => {
+    if (window.historyAPI && window.historyAPI.loadHistory) {
+      window.historyAPI.loadHistory().then((history) => {
+        if (Array.isArray(history)) setCompletedCycles(history);
+      });
+    }
+  }, []);
+
   // Timer principal
   useEffect(() => {
     let interval = null;
@@ -71,6 +80,10 @@ export const TimerProvider = ({ children }) => {
         phase: currentPhase,
       };
       setCompletedCycles(prev => [...prev, completedCycle]);
+      // Salvar no arquivo local (Electron)
+      if (window.historyAPI && window.historyAPI.saveCycle) {
+        window.historyAPI.saveCycle(completedCycle);
+      }
     }
 
     // Notificação
