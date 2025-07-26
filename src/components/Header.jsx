@@ -1,10 +1,7 @@
 import React from 'react';
+import UserProfile from './UserProfile';
 
-const Header = ({ onSettingsClick }) => {
-  const toggleTheme = () => {
-    console.log('Toggle theme clicked');
-  };
-
+const Header = ({ onSettingsClick, onEditProfile }) => {
   return (
     <header className="flex justify-between items-center mb-8">
       <div className="flex items-center space-x-3">
@@ -19,20 +16,17 @@ const Header = ({ onSettingsClick }) => {
 
       <div className="flex items-center space-x-2">
         <button
-          onClick={toggleTheme}
-          className="p-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors hover:scale-105"
-          title="Mudar tema"
-        >
-          🌙
-        </button>
-
-        <button
           onClick={onSettingsClick}
           className="p-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-colors hover:scale-105"
           title="Configurações"
         >
           ⚙️
         </button>
+
+        <UserProfile 
+          onEditProfile={onEditProfile}
+          onOpenSettings={onSettingsClick}
+        />
       </div>
     </header>
   );
