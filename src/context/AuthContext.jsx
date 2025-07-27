@@ -25,54 +25,39 @@ export const AuthProvider = ({ children }) => {
       try {
         console.log('Carregando usuário...');
         
-        // Verificar se há token de autenticação
-        if (apiService.isAuthenticated()) {
-          console.log('Token encontrado, buscando dados do usuário...');
-          const userData = await apiService.getCurrentUser();
-          setUser(userData);
-          setIsAuthenticated(true);
-        } else {
-          // Verificar se há código de autorização (Google ou GitHub)
-          const authCode = authService.checkForAuthCode();
-          console.log('Auth code encontrado:', authCode);
+        // Verificar se há código de autorização (Google)
+        const authCode = authService.checkForAuthCode();
+        console.log('Auth code encontrado:', authCode);
+        
+        if (authCode) {
+          console.log('Processando callback OAuth...');
+          const result = await authService.processGoogleCallback(authCode.code);
           
-          if (authCode) {
-            console.log('Processando callback OAuth...');
-            let result;
-            
+          console.log('Resultado do callback:', result);
+          
+          if (result.success) {
+            console.log('Login OAuth bem-sucedido!');
+            setUser(result.user);
+            setIsAuthenticated(true);
+            saveUser(result.user);
+          } else {
+            console.error('Erro no callback OAuth:', result.error);
+          }
+        } else {
+          // Verificar se há usuário salvo localmente
+          const savedUser = localStorage.getItem('codefocus-user');
+          if (savedUser && savedUser !== 'undefined') {
             try {
-              result = await authService.processGoogleCallback(authCode.code);
-            } catch (error) {
-              console.log('Não é callback do Google, tentando GitHub...');
-              result = await authService.processGitHubCallback(authCode.code);
-            }
-            
-            console.log('Resultado do callback:', result);
-            
-            if (result.success) {
-              console.log('Login OAuth bem-sucedido!');
-              setUser(result.user);
+              console.log('Usuário encontrado no localStorage');
+              const userData = JSON.parse(savedUser);
+              setUser(userData);
               setIsAuthenticated(true);
-              saveUser(result.user);
-            } else {
-              console.error('Erro no callback OAuth:', result.error);
+            } catch (error) {
+              console.error('Erro ao parsear usuário do localStorage:', error);
+              localStorage.removeItem('codefocus-user');
             }
           } else {
-            // Verificar se há usuário salvo localmente (fallback)
-            const savedUser = localStorage.getItem('codefocus-user');
-            if (savedUser && savedUser !== 'undefined') {
-              try {
-                console.log('Usuário encontrado no localStorage');
-                const userData = JSON.parse(savedUser);
-                setUser(userData);
-                setIsAuthenticated(true);
-              } catch (error) {
-                console.error('Erro ao parsear usuário do localStorage:', error);
-                localStorage.removeItem('codefocus-user');
-              }
-            } else {
-              console.log('Nenhum usuário encontrado');
-            }
+            console.log('Nenhum usuário encontrado');
           }
         }
       } catch (error) {
@@ -85,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     loadUser();
   }, []);
 
-  // Salvar usuário no localStorage (fallback)
+  // Salvar usuário no localStorage
   const saveUser = (userData) => {
     try {
       localStorage.setItem('codefocus-user', JSON.stringify(userData));
@@ -94,42 +79,106 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Login com e-mail/senha (backend)
+  // Login com e-mail/senha (backend com fallback local)
   const loginWithEmail = async (email, password) => {
     try {
       setLoading(true);
-      console.log('AuthContext: Iniciando login com e-mail...');
+      console.log('AuthContext: Tentando login com backend...');
       
-      const result = await apiService.login({ email, password });
-      console.log('AuthContext: Resultado do login:', result);
-      
-      // Buscar dados do usuário
-      const userData = await apiService.getCurrentUser();
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      return { success: true, user: userData };
+      try {
+        const result = await apiService.login(email, password);
+        
+        if (result.success) {
+          setUser(result.user);
+          setIsAuthenticated(true);
+          saveUser(result.user);
+          console.log('AuthContext: Login com backend bem-sucedido:', result.user);
+          return result;
+        }
+        
+        return result;
+      } catch (backendError) {
+        console.log('AuthContext: Backend não disponível, usando localStorage...');
+        
+        // Fallback para localStorage
+        const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
+        const user = users.find(u => u.email === email && u.password === password);
+        
+        if (!user) {
+          return { success: false, error: 'Email ou senha incorretos' };
+        }
+        
+        // Atualizar login time
+        user.loginTime = new Date().toISOString();
+        localStorage.setItem('codefocus-users', JSON.stringify(users));
+        
+        // Fazer login
+        setUser(user);
+        setIsAuthenticated(true);
+        saveUser(user);
+        
+        console.log('AuthContext: Login local bem-sucedido:', user);
+        return { success: true, user };
+      }
     } catch (error) {
-      console.error('AuthContext: Erro no login com e-mail:', error);
+      console.error('AuthContext: Erro no login:', error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
     }
   };
 
-  // Registro de usuário (backend)
+  // Registro de usuário (backend com fallback local)
   const registerUser = async (userData) => {
     try {
       setLoading(true);
-      console.log('AuthContext: Iniciando registro...');
+      console.log('AuthContext: Tentando registro com backend...');
       
-      const result = await apiService.register(userData);
-      console.log('AuthContext: Resultado do registro:', result);
-      
-      // Fazer login automaticamente após registro
-      const loginResult = await loginWithEmail(userData.email, userData.password);
-      
-      return loginResult;
+      try {
+        const result = await apiService.register(userData);
+        
+        if (result.success) {
+          setUser(result.user);
+          setIsAuthenticated(true);
+          saveUser(result.user);
+          console.log('AuthContext: Registro com backend bem-sucedido:', result.user);
+          return result;
+        }
+        
+        return result;
+      } catch (backendError) {
+        console.log('AuthContext: Backend não disponível, usando localStorage...');
+        
+        // Fallback para localStorage
+        const existingUsers = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
+        const existingUser = existingUsers.find(user => user.email === userData.email);
+        
+        if (existingUser) {
+          return { success: false, error: 'Email já registrado' };
+        }
+        
+        // Criar novo usuário
+        const newUser = {
+          id: `local_${Date.now()}`,
+          name: userData.name,
+          email: userData.email,
+          password: userData.password, // Em produção, deveria ser hasheada
+          provider: 'email',
+          loginTime: new Date().toISOString()
+        };
+        
+        // Salvar usuário
+        existingUsers.push(newUser);
+        localStorage.setItem('codefocus-users', JSON.stringify(existingUsers));
+        
+        // Fazer login automaticamente
+        setUser(newUser);
+        setIsAuthenticated(true);
+        saveUser(newUser);
+        
+        console.log('AuthContext: Registro local bem-sucedido:', newUser);
+        return { success: true, user: newUser };
+      }
     } catch (error) {
       console.error('AuthContext: Erro no registro:', error);
       return { success: false, error: error.message };
@@ -148,59 +197,14 @@ export const AuthProvider = ({ children }) => {
       console.log('AuthContext: Resultado do login Google:', result);
       
       if (result.success) {
-        console.log('AuthContext: Login Google bem-sucedido, atualizando estado...');
         setUser(result.user);
         setIsAuthenticated(true);
         saveUser(result.user);
-      } else {
-        console.error('AuthContext: Erro no login Google:', result.error);
       }
       
       return result;
     } catch (error) {
-      console.error('AuthContext: Erro no login Google:', error);
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Login com GitHub
-  const loginWithGitHub = async () => {
-    try {
-      setLoading(true);
-      
-      const result = await authService.loginWithGitHub();
-      return result;
-    } catch (error) {
-      console.error('Erro no login GitHub:', error);
-      return { success: false, error: error.message };
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Login anônimo (para desenvolvimento)
-  const loginAnonymously = async () => {
-    try {
-      setLoading(true);
-      
-      const anonymousUser = {
-        id: 'anon_' + Date.now(),
-        name: 'Usuário Anônimo',
-        email: 'anonymous@codefocus.com',
-        avatar: 'https://via.placeholder.com/40',
-        provider: 'anonymous',
-        loginTime: new Date().toISOString()
-      };
-
-      setUser(anonymousUser);
-      setIsAuthenticated(true);
-      saveUser(anonymousUser);
-
-      return { success: true, user: anonymousUser };
-    } catch (error) {
-      console.error('Erro no login anônimo:', error);
+      console.error('AuthContext: Erro no login com Google:', error);
       return { success: false, error: error.message };
     } finally {
       setLoading(false);
@@ -210,41 +214,74 @@ export const AuthProvider = ({ children }) => {
   // Logout
   const logout = async () => {
     try {
-      // Logout do backend se estiver usando
-      if (apiService.isAuthenticated()) {
-        apiService.logout();
-      }
+      console.log('AuthContext: Fazendo logout...');
       
-      // Logout dos provedores OAuth
-      if (user?.provider) {
-        await authService.logout(user.provider);
-      }
-      
-      localStorage.removeItem('codefocus-user');
+      // Limpar dados do usuário
       setUser(null);
       setIsAuthenticated(false);
+      
+      // Limpar localStorage
+      localStorage.removeItem('codefocus-user');
+      
+      // Limpar dados específicos do usuário
+      if (user) {
+        localStorage.removeItem(`codefocus-timer-state-${user.id}`);
+        localStorage.removeItem(`codefocus-history-${user.id}`);
+        localStorage.removeItem(`codefocus-notes-${user.id}`);
+        localStorage.removeItem(`codefocus-tags-${user.id}`);
+      }
+      
+      console.log('AuthContext: Logout realizado com sucesso');
+      return { success: true };
     } catch (error) {
-      console.error('Erro no logout:', error);
+      console.error('AuthContext: Erro no logout:', error);
+      return { success: false, error: error.message };
     }
   };
 
-  // Atualizar perfil do usuário
+  // Atualizar perfil (backend com fallback local)
   const updateProfile = async (updates) => {
-    if (!user) return;
-
     try {
-      if (apiService.isAuthenticated()) {
-        // Atualizar no backend
-        const updatedUser = await apiService.updateUser(updates);
-        setUser(updatedUser);
-      } else {
-        // Atualizar localmente
+      setLoading(true);
+      console.log('AuthContext: Tentando atualizar perfil com backend...');
+      
+      try {
+        const result = await apiService.updateProfile(user.id, updates);
+        
+        if (result.success) {
+          const updatedUser = { ...user, ...result.user };
+          setUser(updatedUser);
+          saveUser(updatedUser);
+          console.log('AuthContext: Perfil atualizado com backend:', updatedUser);
+          return result;
+        }
+        
+        return result;
+      } catch (backendError) {
+        console.log('AuthContext: Backend não disponível, atualizando localmente...');
+        
+        // Fallback para localStorage
+        const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
+        const userIndex = users.findIndex(u => u.id === user.id);
+        
+        if (userIndex !== -1) {
+          users[userIndex] = { ...users[userIndex], ...updates };
+          localStorage.setItem('codefocus-users', JSON.stringify(users));
+        }
+        
+        // Atualizar estado local
         const updatedUser = { ...user, ...updates };
         setUser(updatedUser);
         saveUser(updatedUser);
+        
+        console.log('AuthContext: Perfil atualizado localmente:', updatedUser);
+        return { success: true, user: updatedUser };
       }
     } catch (error) {
-      console.error('Erro ao atualizar perfil:', error);
+      console.error('AuthContext: Erro ao atualizar perfil:', error);
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -255,8 +292,6 @@ export const AuthProvider = ({ children }) => {
     loginWithEmail,
     registerUser,
     loginWithGoogle,
-    loginWithGitHub,
-    loginAnonymously,
     logout,
     updateProfile
   };

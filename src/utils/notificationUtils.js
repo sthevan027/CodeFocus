@@ -67,8 +67,8 @@ class NotificationManager {
     }
 
     const notification = new Notification(title, {
-      icon: '/icon.png',
-      badge: '/icon.png',
+              icon: '/favicon.ico',
+        badge: '/favicon.ico',
       requireInteraction: false,
       silent: false,
       ...options

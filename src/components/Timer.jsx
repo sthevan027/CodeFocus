@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
+import SpotifyQuickControl from './SpotifyQuickControl';
 
 const Timer = () => {
   const { user } = useAuth();
@@ -44,6 +45,9 @@ const Timer = () => {
   const [showCycleInput, setShowCycleInput] = useState(false);
   const [customFocusMinutes, setCustomFocusMinutes] = useState(initialState.customFocusMinutes);
   const [showGitModal, setShowGitModal] = useState(false);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [sessionNote, setSessionNote] = useState('');
   
   // Salvar estado no localStorage sempre que mudar
   const saveTimerState = (newState) => {
@@ -52,6 +56,48 @@ const Timer = () => {
       localStorage.setItem(userKey, JSON.stringify(newState));
     } catch (error) {
       console.error('Erro ao salvar estado do timer:', error);
+    }
+  };
+
+  // Salvar sessão completada
+  const saveSession = (duration, phase, name, tags = [], note = '') => {
+    try {
+      const userKey = user ? `codefocus-history-${user.id}` : 'codefocus-history';
+      const history = JSON.parse(localStorage.getItem(userKey) || '[]');
+      
+      const session = {
+        id: Date.now(),
+        name: name || `${phase} session`,
+        duration: duration,
+        phase: phase,
+        tags: tags,
+        note: note,
+        timestamp: new Date().toISOString(),
+        type: 'session'
+      };
+      
+      history.unshift(session);
+      localStorage.setItem(userKey, JSON.stringify(history));
+      
+      // Salvar nota separadamente se houver
+      if (note.trim()) {
+        const notesKey = user ? `codefocus-notes-${user.id}` : 'codefocus-notes';
+        const notes = JSON.parse(localStorage.getItem(notesKey) || '[]');
+        
+        const noteEntry = {
+          id: Date.now() + 1,
+          message: note,
+          tags: tags,
+          timestamp: new Date().toISOString(),
+          type: 'note',
+          sessionId: session.id
+        };
+        
+        notes.unshift(noteEntry);
+        localStorage.setItem(notesKey, JSON.stringify(notes));
+      }
+    } catch (error) {
+      console.error('Erro ao salvar sessão:', error);
     }
   };
 
@@ -98,6 +144,21 @@ const Timer = () => {
     } else if (timeLeft === 0) {
       setIsRunning(false);
       notificationManager.notifyCycleComplete(currentPhase);
+      
+      // Calcular duração da sessão
+      const sessionDuration = getPhaseDuration(currentPhase) - timeLeft;
+      
+      // Salvar sessão
+      saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+      
+      // Mostrar modal de nota se for sessão de foco
+      if (currentPhase === 'focus') {
+        setShowNoteModal(true);
+      }
+      
+      // Limpar dados da sessão
+      setSelectedTags([]);
+      setSessionNote('');
       
       // Mostrar modal Git se for um ciclo de foco
       if (currentPhase === 'focus' && cycleName) {
@@ -234,17 +295,17 @@ const Timer = () => {
   // Componente Flip Card
   const FlipCard = ({ value, label }) => (
     <div className="text-center">
-              <div className="relative bg-white/10 backdrop-blur-md rounded-xl p-2 sm:p-4 border border-white/20 shadow-lg overflow-hidden">
-          {/* Container do número */}
-          <div className="relative h-8 sm:h-12 flex items-center justify-center">
-            <span className="text-2xl sm:text-4xl font-bold tracking-wider text-white">
-              {value}
-            </span>
-          </div>
+      <div className="relative bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-lg overflow-hidden">
+        {/* Container do número */}
+        <div className="relative h-16 flex items-center justify-center">
+          <span className="text-5xl font-bold tracking-wider text-white">
+            {value}
+          </span>
         </div>
-                <div className="text-white/80 text-xs font-medium mt-1 sm:mt-2 tracking-wider">
-            {label}
-          </div>
+      </div>
+      <div className="text-white/80 text-sm font-medium mt-3 tracking-wider">
+        {label}
+      </div>
     </div>
   );
 
@@ -254,16 +315,16 @@ const Timer = () => {
   return (
     <div className="flex flex-col items-center">
       {/* Relógio Digital */}
-      <div className="relative w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl mb-8">
+      <div className="relative w-full max-w-2xl mb-12">
         {/* Título COUNTDOWN */}
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-bold text-white tracking-wider">
+        <div className="text-center mb-8">
+          <h1 className="text-6xl font-bold text-white tracking-wider">
             COUNTDOWN
           </h1>
         </div>
 
         {/* Display do Timer */}
-        <div className="flex justify-center items-center space-x-2 sm:space-x-4 mb-6">
+        <div className="flex justify-center items-center space-x-4 mb-8">
           {/* Horas */}
           <FlipCard 
             value={hours}
@@ -271,7 +332,7 @@ const Timer = () => {
           />
 
           {/* Separador */}
-          <div className="text-2xl sm:text-4xl font-bold text-white">:</div>
+          <div className="text-6xl font-bold text-white">:</div>
 
           {/* Minutos */}
           <FlipCard 
@@ -280,7 +341,7 @@ const Timer = () => {
           />
 
           {/* Separador */}
-          <div className="text-2xl sm:text-4xl font-bold text-white">:</div>
+          <div className="text-6xl font-bold text-white">:</div>
 
           {/* Segundos */}
           <FlipCard 
@@ -290,12 +351,12 @@ const Timer = () => {
         </div>
 
         {/* Fase atual */}
-        <div className="text-center mb-4">
-          <div className="text-white/90 text-sm font-medium tracking-wider">
+        <div className="text-center mb-6">
+          <div className="text-white/90 text-2xl font-medium tracking-wider">
             {getPhaseName()}
           </div>
           {cycleName && currentPhase === 'focus' && (
-            <div className="text-white/60 text-xs mt-1 max-w-xs mx-auto truncate">
+            <div className="text-white/60 text-lg mt-2 max-w-md mx-auto truncate">
               {cycleName}
             </div>
           )}
@@ -303,7 +364,7 @@ const Timer = () => {
 
         {/* Subtítulo */}
         <div className="text-center">
-          <div className="text-white/70 text-sm tracking-wider">
+          <div className="text-white/70 text-lg tracking-wider">
             with POMODORO TECHNIQUE
           </div>
         </div>
@@ -339,28 +400,28 @@ const Timer = () => {
       )}
 
       {/* Controls */}
-      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 mb-6">
+      <div className="flex flex-wrap justify-center gap-4 mb-8">
         {!isRunning && !isPaused && (
           <>
             <button
               onClick={handleStartFocus}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20 text-sm sm:text-base"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
-              🎯 Iniciar Foco
+              ▷ Iniciar Foco
             </button>
             
             <button
               onClick={startShortBreak}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20 text-sm sm:text-base"
+              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
               ☕ Pausa Curta
             </button>
             
             <button
               onClick={startLongBreak}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-3 sm:px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20 text-sm sm:text-base"
+              className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
-              🛋️ Pausa Longa
+              🧘 Pausa Longa
             </button>
           </>
         )}
@@ -369,7 +430,7 @@ const Timer = () => {
           <>
             <button
               onClick={pauseTimer}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
+              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
               ⏸️ Pausar
             </button>
@@ -380,14 +441,14 @@ const Timer = () => {
           <>
             <button
               onClick={resumeTimer}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
+              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
               ▶️ Continuar
             </button>
             
             <button
               onClick={resetTimer}
-              className="bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg hover:bg-white/20"
+              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
             >
               🔄 Resetar
             </button>
@@ -396,12 +457,12 @@ const Timer = () => {
       </div>
 
       {/* Quick Actions */}
-      <div className="flex justify-center space-x-4">
+      <div className="flex justify-center mb-6">
         <button
           onClick={() => setShowCycleInput(!showCycleInput)}
-          className="text-gray-400 hover:text-white transition-colors"
+          className="text-gray-400 hover:text-white transition-colors text-lg"
         >
-          ✏️ {cycleName ? 'Editar' : 'Adicionar'} Nome
+          ✏️ Editar Nome
         </button>
       </div>
 
@@ -414,6 +475,101 @@ const Timer = () => {
           console.log('Commit realizado:', result);
         }}
       />
+
+      {/* Modal de Notas e Tags */}
+      {showNoteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">📝 Nota da Sessão</h2>
+              <button
+                onClick={() => setShowNoteModal(false)}
+                className="text-white/60 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-white/80 text-sm mb-2">O que você fez?</label>
+                <textarea
+                  value={sessionNote}
+                  onChange={(e) => setSessionNote(e.target.value)}
+                  placeholder="Descreva o que você trabalhou nesta sessão..."
+                  rows={4}
+                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                />
+              </div>
+
+              {/* Tags disponíveis */}
+              <div>
+                <label className="block text-white/80 text-sm mb-2">Tags (opcional)</label>
+                <div className="flex flex-wrap gap-2">
+                  {['frontend', 'backend', 'bugfix', 'feature', 'refactor', 'testing'].map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => {
+                        setSelectedTags(prev => 
+                          prev.includes(tag) 
+                            ? prev.filter(t => t !== tag)
+                            : [...prev, tag]
+                        );
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${
+                        selectedTags.includes(tag)
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white/10 text-white/60 hover:text-white'
+                      }`}
+                    >
+                      #{tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => setShowNoteModal(false)}
+                  className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
+                >
+                  Pular
+                </button>
+                <button
+                  onClick={() => {
+                    // Salvar nota
+                    if (sessionNote.trim()) {
+                      const notesKey = user ? `codefocus-notes-${user.id}` : 'codefocus-notes';
+                      const notes = JSON.parse(localStorage.getItem(notesKey) || '[]');
+                      
+                      const noteEntry = {
+                        id: Date.now(),
+                        message: sessionNote,
+                        tags: selectedTags,
+                        timestamp: new Date().toISOString(),
+                        type: 'note'
+                      };
+                      
+                      notes.unshift(noteEntry);
+                      localStorage.setItem(notesKey, JSON.stringify(notes));
+                    }
+                    
+                    setShowNoteModal(false);
+                    setSessionNote('');
+                    setSelectedTags([]);
+                  }}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Salvar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Spotify Quick Control */}
+      <SpotifyQuickControl />
     </div>
   );
 };

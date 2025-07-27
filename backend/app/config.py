@@ -4,7 +4,7 @@ import os
 
 class Settings(BaseSettings):
     # Configurações do Banco de Dados
-    # Usar SQLite no Windows se PostgreSQL não estiver disponível
+    # Usar SQLite para desenvolvimento
     database_url: str = "sqlite:///./codefocus.db"
     
     # Configurações de Segurança

@@ -50,17 +50,9 @@ const EditProfileModal = ({ isOpen, onClose }) => {
           {/* Avatar Preview */}
           <div className="text-center mb-4">
             <div className="w-20 h-20 rounded-full mx-auto mb-2 overflow-hidden">
-              {formData.avatar ? (
-                <img
-                  src={formData.avatar}
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-blue-500 flex items-center justify-center text-white text-xl font-bold">
-                  {formData.name?.charAt(0) || 'U'}
-                </div>
-              )}
+              <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold">
+                {formData.name?.charAt(0)?.toUpperCase() || 'U'}
+              </div>
             </div>
           </div>
 

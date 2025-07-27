@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ onGoToRegister }) => {
-  const { loginWithEmail, loginWithGoogle, loginWithGitHub, loginAnonymously, loading } = useAuth();
+  const { loginWithEmail, loginWithGoogle, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,10 +26,15 @@ const LoginScreen = ({ onGoToRegister }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-xl shadow-lg p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 flex items-center justify-center relative overflow-hidden">
+      {/* Logo de fundo */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-10">
+        <img src="/logo.svg" alt="Logo Background" className="w-96 h-96 object-contain" />
+      </div>
+      
+      <div className="bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-2xl p-8 w-full max-w-md relative z-10 border border-white/10">
         <div className="flex flex-col items-center mb-6">
-          <img src="/icon.png" alt="Logo" className="w-16 h-16 mb-2" />
+          <img src="/logo.svg" alt="Logo" className="w-16 h-16 mb-2" />
           <h1 className="text-3xl font-bold text-white mb-1">CodeFocus</h1>
           <p className="text-gray-400 text-sm">Foque. Produza. Cresça.</p>
         </div>
@@ -61,28 +66,26 @@ const LoginScreen = ({ onGoToRegister }) => {
           </button>
         </form>
         <button
-          onClick={loginWithGoogle}
+          onClick={async () => {
+            setError('');
+            try {
+              const result = await loginWithGoogle();
+              if (!result.success) {
+                if (result.error.includes('não configurado')) {
+                  setError('Google OAuth não configurado. Use login com email ou configure o OAuth.');
+                } else {
+                  setError(result.error || 'Erro no login com Google');
+                }
+              }
+            } catch (error) {
+              setError('Erro ao conectar com o Google');
+            }
+          }}
           className="w-full flex items-center justify-center bg-white text-gray-800 font-bold py-2 rounded mb-2 hover:bg-gray-100 transition disabled:opacity-50"
           disabled={loading}
         >
           <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-2" />
           Continuar com Google
-        </button>
-        <button
-          onClick={loginWithGitHub}
-          className="w-full flex items-center justify-center bg-gray-900 text-white font-bold py-2 rounded mb-2 hover:bg-gray-700 transition disabled:opacity-50"
-          disabled={loading}
-        >
-          <img src="https://www.svgrepo.com/show/512317/github-142.svg" alt="GitHub" className="w-5 h-5 mr-2" />
-          Continuar com GitHub
-        </button>
-        <button
-          onClick={loginAnonymously}
-          className="w-full flex items-center justify-center bg-gray-600 text-white font-bold py-2 rounded mb-2 hover:bg-gray-500 transition disabled:opacity-50"
-          disabled={loading}
-        >
-          <span className="mr-2">?</span>
-          Continuar Anonimamente
         </button>
         <div className="text-center mt-4">
           <button

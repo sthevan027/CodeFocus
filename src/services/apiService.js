@@ -72,6 +72,13 @@ class ApiService {
     });
   }
 
+  async updateProfile(userId, updates) {
+    return this.request(`/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  }
+
   async deleteUser() {
     return this.request('/users/me', {
       method: 'DELETE',

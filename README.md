@@ -4,14 +4,14 @@ Sistema de produtividade para desenvolvedores com foco em gestão de tempo e org
 
 ## 🎯 Sobre o Projeto
 
-CodeFocus é uma aplicação desktop completa que combina técnicas de produtividade (Pomodoro) com integração Git para desenvolvedores. O sistema oferece:
+CodeFocus é uma aplicação web completa que combina técnicas de produtividade (Pomodoro) com integração Git para desenvolvedores. O sistema oferece:
 
 - ⏱️ **Timer Pomodoro** com ciclos personalizáveis
-- 🔄 **Integração Git** para commits automáticos
-- 📊 **Relatórios e estatísticas** de produtividade
-- 🎨 **Interface moderna** com tema escuro/claro
-- 🔐 **Autenticação segura** com JWT e OAuth
-- 💾 **Banco de dados SQLite** para persistência local
+- 🎵 **Integração Spotify** para música ambiente
+- 📊 **Dashboard completo** de produtividade
+- 🎨 **Interface moderna** com tema escuro
+- 🔐 **Autenticação segura** com Google OAuth
+- 💾 **Persistência local** com localStorage
 
 ## 🚀 Tecnologias
 
@@ -20,7 +20,13 @@ CodeFocus é uma aplicação desktop completa que combina técnicas de produtivi
 - **Tailwind CSS** - Estilização
 - **Context API** - Gerenciamento de estado
 
-### Backend
+### Frontend
+- **React** - Interface do usuário
+- **Tailwind CSS** - Estilização moderna
+- **Context API** - Gerenciamento de estado
+- **localStorage** - Persistência local de dados
+
+### Backend (Opcional)
 - **Python 3.11+** - Linguagem do servidor
 - **FastAPI** - Framework web moderno e rápido
 - **SQLAlchemy 2.0** - ORM para banco de dados
@@ -34,14 +40,14 @@ CodeFocus é uma aplicação desktop completa que combina técnicas de produtivi
 ## 📁 Estrutura do Projeto
 
 ```
-CodeFocus-main/
+CodeFocus/
 ├── src/                    # Frontend React
 │   ├── components/        # Componentes React
 │   ├── context/          # Context API (Auth, Timer, Theme)
 │   ├── services/         # Serviços de API
-│   ├── utils/            # Utilitários (Git, Export, Notifications)
+│   ├── utils/            # Utilitários (Export, Notifications)
 │   └── config/           # Configurações OAuth
-├── backend/              # Backend FastAPI
+├── backend/              # Backend FastAPI (Opcional)
 │   ├── app/
 │   │   ├── api/         # Endpoints da API
 │   │   ├── auth/        # Autenticação e segurança
@@ -171,7 +177,7 @@ O banco SQLite será criado automaticamente na primeira execução:
 - `POST /api/auth/register` - Cadastrar usuário
 - `POST /api/auth/login` - Fazer login
 - `POST /api/auth/oauth/google` - Login com Google
-- `POST /api/auth/oauth/github` - Login com GitHub
+
 - `GET /api/auth/me` - Dados do usuário atual
 - `POST /api/auth/refresh` - Renovar token
 
@@ -209,19 +215,19 @@ O banco SQLite será criado automaticamente na primeira execução:
 - **🚀 [SETUP_FINAL.md](SETUP_FINAL.md)** - Guia de instalação e execução
 
 ### Configuração OAuth
-- **🔐 [OAUTH_SETUP.md](docs/OAUTH_SETUP.md)** - Configuração Google/GitHub
-- **🛠️ [GOOGLE_OAUTH_FIX.md](docs/GOOGLE_OAUTH_FIX.md)** - Solução de problemas OAuth
+- **🔐 [GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md)** - Configuração Google OAuth
+- **🎵 [SPOTIFY_SETUP.md](docs/SPOTIFY_SETUP.md)** - Configuração Spotify
+- **🔧 [ENV_VARIABLES.md](docs/ENV_VARIABLES.md)** - Variáveis de ambiente
 
 ## 🔐 Funcionalidades
 
 ### Autenticação
-- ✅ Login com e-mail/senha
-- ✅ Registro de usuários
+- ✅ Login com e-mail/senha (localStorage)
+- ✅ Registro de usuários (localStorage)
 - ✅ Login com Google OAuth
-- ✅ Login com GitHub OAuth
-- ✅ JWT para sessões seguras
+- ✅ Backend-first com localStorage fallback
 - ✅ Senhas criptografadas com bcrypt
-- ✅ Refresh tokens
+- ✅ JWT para sessões seguras (backend)
 
 ### Timer Pomodoro
 - ✅ Ciclos de trabalho personalizáveis
@@ -230,24 +236,31 @@ O banco SQLite será criado automaticamente na primeira execução:
 - ✅ Notificações sonoras
 - ✅ Histórico de ciclos
 - ✅ Estatísticas de produtividade
+- ✅ Tags e notas para sessões
+- ✅ Dashboard completo
 
 ### Banco de Dados
 - ✅ 4 tabelas principais (Users, Cycles, Settings, Reports)
 - ✅ Relacionamentos SQLAlchemy
 - ✅ Migrações com Alembic
 - ✅ Validação com Pydantic
-- ✅ Persistência SQLite local
+- ✅ Persistência SQLite local (backend)
+- ✅ localStorage para persistência local (frontend)
 
 ### Frontend
 - ✅ Interface React moderna
-- ✅ Tema escuro/claro
+- ✅ Tema escuro
 - ✅ Context API para estado
-- ✅ Integração com backend
+- ✅ Integração com backend (opcional)
 - ✅ Responsivo e acessível
+- ✅ Integração Spotify
+- ✅ Dashboard de produtividade
 
 ## 🚀 Como Usar
 
-1. **Inicie o backend:**
+### Opção 1: Desenvolvimento Local
+
+1. **Inicie o backend (opcional):**
    ```bash
    cd backend
    uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
@@ -260,8 +273,29 @@ O banco SQLite será criado automaticamente na primeira execução:
 
 3. **Acesse a aplicação:**
    - Frontend: http://localhost:3000
-   - API Docs: http://localhost:8000/docs
-   - ReDoc: http://localhost:8000/redoc
+   - API Docs: http://localhost:8000/docs (se backend estiver rodando)
+
+### Opção 2: Apenas Frontend (Recomendado)
+
+1. **Configure as variáveis de ambiente:**
+```bash
+# Copie o arquivo de exemplo
+cp env.example .env
+
+# Edite o arquivo .env com suas credenciais
+# REACT_APP_SPOTIFY_CLIENT_ID=seu_client_id_aqui
+# REACT_APP_GOOGLE_CLIENT_ID=seu_google_client_id_aqui
+
+```
+
+2. **Inicie a aplicação:**
+```bash
+npm start
+```
+
+3. **Acesse:** http://localhost:3000
+
+**Nota:** O frontend funciona independentemente do backend, usando localStorage para persistência de dados.
 
 4. **Teste as funcionalidades:**
    - Cadastre uma conta nova
@@ -280,27 +314,31 @@ O banco SQLite será criado automaticamente na primeira execução:
 ### Frontend
 - **Porta:** 3000
 - **Hot Reload:** Ativado
-- **API:** Conectado ao backend na porta 8000
-- **Electron:** Configurado para desktop
+- **API:** Conectado ao backend na porta 8000 (opcional)
+- **localStorage:** Persistência local de dados
 
 ### Variáveis de Ambiente
 ```bash
-# Backend (.env)
+# Frontend (.env)
+REACT_APP_API_URL=http://localhost:8000
+REACT_APP_GOOGLE_CLIENT_ID=your-google-client-id
+REACT_APP_SPOTIFY_CLIENT_ID=your-spotify-client-id
+
+# Backend (.env) - Opcional
 DATABASE_URL=sqlite:///./codefocus.db
 SECRET_KEY=your-secret-key
 GOOGLE_CLIENT_ID=your-google-client-id
-GITHUB_CLIENT_ID=your-github-client-id
 ```
 
 ## 📝 Próximos Passos
 
 - [ ] Implementar integração Git completa
-- [ ] Adicionar sistema de notificações desktop
-- [ ] Criar dashboard avançado de produtividade
+- [ ] Adicionar sistema de notificações web
 - [ ] Implementar exportação de relatórios (PDF/Excel)
 - [ ] Adicionar sincronização com calendário
 - [ ] Implementar modo offline
 - [ ] Adicionar suporte a múltiplos projetos
+- [ ] Implementar push automático para Git
 
 ## 🤝 Contribuição
 

@@ -14,12 +14,12 @@
     <title>CodeFocus</title>
     
     <!-- Content Security Policy mais permissiva para desenvolvimento -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none';">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https: https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https: https://accounts.google.com; frame-src 'self' https: https://accounts.google.com; object-src 'none';">
     
     <!-- Google OAuth -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://apis.google.com/js/platform.js"></script>
-    <meta name="google-signin-client_id" content="543755830812-q79i7d2u5bk25g52h3b4aguf9nfforv1.apps.googleusercontent.com">
+    <meta name="google-signin-client_id" content="263837308438-b6hk644i1a1roi3tsnd0egpt6c32m1qm.apps.googleusercontent.com">
   </head>
   <body>
     <noscript>Você precisa habilitar JavaScript para executar este app.</noscript>

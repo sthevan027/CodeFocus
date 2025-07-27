@@ -70,17 +70,9 @@ const UserProfile = ({ onEditProfile, onOpenSettings }) => {
         onClick={() => setShowDropdown(!showDropdown)}
         className="flex items-center space-x-2 bg-white/10 backdrop-blur-md border border-white/20 text-white font-medium py-2 px-3 rounded-lg transition-all duration-200 hover:bg-white/20"
       >
-        {user.avatar && user.avatar !== 'https://via.placeholder.com/40' ? (
-          <img
-            src={user.avatar}
-            alt={user.name}
-            className="w-8 h-8 rounded-full object-cover"
-          />
-        ) : (
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-            {user.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+          {user.name.charAt(0).toUpperCase()}
+        </div>
         <span className="hidden sm:block text-sm">{user.name}</span>
         <svg
           className={`w-4 h-4 transition-transform duration-200 ${showDropdown ? 'rotate-180' : ''}`}
@@ -98,17 +90,9 @@ const UserProfile = ({ onEditProfile, onOpenSettings }) => {
           {/* Cabeçalho do Perfil */}
           <div className="p-4 border-b border-white/10">
             <div className="flex items-center space-x-3">
-              {user.avatar && user.avatar !== 'https://via.placeholder.com/40' ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name}
-                  className="w-12 h-12 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
-              )}
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-lg font-bold">
+                {user.name.charAt(0).toUpperCase()}
+              </div>
               <div className="flex-1">
                 <h3 className="text-white font-semibold">{user.name}</h3>
                 <p className="text-white/60 text-sm">{user.email}</p>

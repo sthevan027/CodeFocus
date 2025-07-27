@@ -10,11 +10,12 @@ const SettingsScreen = ({ isOpen, onClose }) => {
     focusDuration: 25,
     shortBreakDuration: 5,
     longBreakDuration: 15,
+    cyclesBeforeLongBreak: 4,
+    autoStartBreaks: false,
+    autoStartPomodoros: false,
     customName: user?.name || '',
     customEmail: user?.email || ''
   });
-
-  const [activeTab, setActiveTab] = useState('general');
 
   useEffect(() => {
     if (user) {
@@ -49,6 +50,9 @@ const SettingsScreen = ({ isOpen, onClose }) => {
       focusDuration: 25,
       shortBreakDuration: 5,
       longBreakDuration: 15,
+      cyclesBeforeLongBreak: 4,
+      autoStartBreaks: false,
+      autoStartPomodoros: false,
       customName: user?.name || '',
       customEmail: user?.email || ''
     });
@@ -57,224 +61,164 @@ const SettingsScreen = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-6 max-w-2xl w-full mx-4 shadow-2xl max-h-[80vh] overflow-y-auto">
-        {/* Cabeçalho */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">⚙️ Configurações</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-700">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <span className="text-white text-xl">⚙️</span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-white">Configurações</h2>
+              <p className="text-gray-400 text-base">Personalize sua experiência</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="text-white/70 hover:text-white transition-colors"
+            className="text-gray-400 hover:text-white transition-colors text-xl"
           >
             ✕
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex space-x-1 mb-6 bg-white/5 rounded-lg p-1">
-          {[
-            { id: 'general', label: 'Geral', icon: '⚙️' },
-            { id: 'timer', label: 'Timer', icon: '⏱️' },
-            { id: 'notifications', label: 'Notificações', icon: '🔔' },
-            { id: 'profile', label: 'Perfil', icon: '👤' }
-          ].map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors ${
-                activeTab === tab.id
-                  ? 'bg-white/20 text-white'
-                  : 'text-white/70 hover:text-white'
-              }`}
-            >
-              <span className="mr-2">{tab.icon}</span>
-              {tab.label}
-            </button>
-          ))}
-        </div>
-
-        {/* Conteúdo das Tabs */}
-        <div className="space-y-6">
-          {/* Tab Geral */}
-          {activeTab === 'general' && (
-            <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">🎯 Comportamento</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={settings.autoCommit}
-                      onChange={(e) => setSettings(prev => ({ ...prev, autoCommit: e.target.checked }))}
-                      className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-white/80">Commit automático após ciclos de foco</span>
-                  </label>
-                </div>
+        {/* Conteúdo Principal */}
+        <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          
+          {/* Durações do Timer */}
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm">⏱️</span>
               </div>
-
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">📊 Dados</h3>
-                <div className="space-y-3">
-                  <button className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    📤 Exportar Dados
-                  </button>
-                  <button className="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    🗑️ Limpar Dados
-                  </button>
-                </div>
+              <h3 className="text-lg font-semibold text-white">Durações do Timer</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-white/90 text-sm mb-2">Foco (minutos)</label>
+                <input
+                  type="number"
+                  value={settings.focusDuration}
+                  onChange={(e) => setSettings(prev => ({ ...prev, focusDuration: parseInt(e.target.value) || 25 }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="120"
+                />
+              </div>
+              <div>
+                <label className="block text-white/90 text-sm mb-2">Pausa Curta (minutos)</label>
+                <input
+                  type="number"
+                  value={settings.shortBreakDuration}
+                  onChange={(e) => setSettings(prev => ({ ...prev, shortBreakDuration: parseInt(e.target.value) || 5 }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="30"
+                />
+              </div>
+              <div>
+                <label className="block text-white/90 text-sm mb-2">Pausa Longa (minutos)</label>
+                <input
+                  type="number"
+                  value={settings.longBreakDuration}
+                  onChange={(e) => setSettings(prev => ({ ...prev, longBreakDuration: parseInt(e.target.value) || 15 }))}
+                  className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  min="1"
+                  max="60"
+                />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Tab Timer */}
-          {activeTab === 'timer' && (
+          {/* Configurações de Ciclo */}
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm">🔄</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white">Configurações de Ciclo</h3>
+            </div>
+            <div>
+              <label className="block text-white/90 text-sm mb-2">Ciclos antes da pausa longa</label>
+              <input
+                type="number"
+                value={settings.cyclesBeforeLongBreak}
+                onChange={(e) => setSettings(prev => ({ ...prev, cyclesBeforeLongBreak: parseInt(e.target.value) || 4 }))}
+                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                min="1"
+                max="10"
+              />
+              <p className="text-gray-400 text-xs mt-2">Quantos ciclos de foco antes de uma pausa longa</p>
+            </div>
+          </div>
+
+          {/* Início Automático */}
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-sm">▶️</span>
+              </div>
+              <h3 className="text-lg font-semibold text-white">Início Automático</h3>
+            </div>
             <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">⏱️ Durações (minutos)</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-white/80 text-sm mb-2">Foco</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={settings.focusDuration}
-                      onChange={(e) => setSettings(prev => ({ ...prev, focusDuration: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm mb-2">Pausa Curta</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={settings.shortBreakDuration}
-                      onChange={(e) => setSettings(prev => ({ ...prev, shortBreakDuration: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm mb-2">Pausa Longa</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="60"
-                      value={settings.longBreakDuration}
-                      onChange={(e) => setSettings(prev => ({ ...prev, longBreakDuration: parseInt(e.target.value) }))}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/90 font-medium">Iniciar pausas automaticamente</p>
+                  <p className="text-gray-400 text-xs">As pausas começam automaticamente quando o foco termina</p>
                 </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={settings.autoStartBreaks}
+                    onChange={(e) => setSettings(prev => ({ ...prev, autoStartBreaks: e.target.checked }))}
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-white/90 font-medium">Iniciar pomodoros automaticamente</p>
+                  <p className="text-gray-400 text-xs">Os ciclos de foco começam automaticamente após as pausas</p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="sr-only peer"
+                    checked={settings.autoStartPomodoros}
+                    onChange={(e) => setSettings(prev => ({ ...prev, autoStartPomodoros: e.target.checked }))}
+                  />
+                  <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
               </div>
             </div>
-          )}
+          </div>
 
-          {/* Tab Notificações */}
-          {activeTab === 'notifications' && (
-            <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">🔔 Notificações</h3>
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={settings.notifications}
-                      onChange={(e) => setSettings(prev => ({ ...prev, notifications: e.target.checked }))}
-                      className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-white/80">Notificações desktop</span>
-                  </label>
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={settings.sounds}
-                      onChange={(e) => setSettings(prev => ({ ...prev, sounds: e.target.checked }))}
-                      className="w-4 h-4 text-blue-600 bg-white/10 border-white/20 rounded focus:ring-blue-500"
-                    />
-                    <span className="text-white/80">Sons de notificação</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">🎵 Testar Notificações</h3>
-                <div className="space-y-2">
-                  <button className="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    🔔 Testar Notificação
-                  </button>
-                  <button className="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 px-4 rounded-lg transition-colors">
-                    🔊 Testar Som
-                  </button>
-                </div>
-              </div>
+          {/* Dica de Produtividade */}
+          <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
+            <div className="flex items-center space-x-3 mb-3">
+              <span className="text-2xl">☕</span>
+              <h3 className="text-lg font-semibold text-white">Dica de Produtividade</h3>
             </div>
-          )}
-
-          {/* Tab Perfil */}
-          {activeTab === 'profile' && (
-            <div className="space-y-4">
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">👤 Informações do Perfil</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-white/80 text-sm mb-2">Nome</label>
-                    <input
-                      type="text"
-                      value={settings.customName}
-                      onChange={(e) => setSettings(prev => ({ ...prev, customName: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Seu nome"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-white/80 text-sm mb-2">Email</label>
-                    <input
-                      type="email"
-                      value={settings.customEmail}
-                      onChange={(e) => setSettings(prev => ({ ...prev, customEmail: e.target.value }))}
-                      className="w-full px-3 py-2 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="seu@email.com"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-white/5 rounded-lg p-4">
-                <h3 className="text-white font-semibold mb-3">🔐 Conta</h3>
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      {user?.name?.charAt(0)?.toUpperCase() || 'U'}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{user?.name || 'Usuário'}</p>
-                      <p className="text-white/60 text-sm">{user?.email || 'email@exemplo.com'}</p>
-                    </div>
-                  </div>
-                  <p className="text-white/60 text-xs">
-                    Provedor: {user?.provider || 'Desconhecido'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+            <p className="text-gray-300 text-sm leading-relaxed">
+              A técnica Pomodoro clássica usa 25 minutos de foco e 5 minutos de pausa. Ajuste os tempos conforme sua necessidade, mas mantenha a consistência!
+            </p>
+          </div>
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-white/10">
+        <div className="flex justify-end space-x-4 p-6 border-t border-gray-700">
           <button
             onClick={handleReset}
-            className="px-4 py-2 text-white/70 hover:text-white transition-colors"
+            className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-xl transition-all duration-200 hover:scale-105 shadow-lg"
           >
-            Resetar
+            Restaurar Padrão
           </button>
           <button
             onClick={handleSave}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded-lg transition-colors"
+            className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium rounded-xl transition-all duration-200 hover:scale-105 shadow-lg"
           >
-            Salvar
+            Salvar Configurações
           </button>
         </div>
       </div>
