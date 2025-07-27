@@ -5,7 +5,28 @@ class AuthService {
   constructor() {
     this.googleAuth = null;
     this.githubAuth = null;
-    this.init();
+    // Não inicializar no construtor para evitar problemas com SSR
+  }
+
+  // Inicializar o serviço quando necessário
+  async ensureInitialized() {
+    if (!this.googleAuth && !this.githubAuth) {
+      await this.init();
+    }
+  }
+
+  async init() {
+    try {
+      // Inicializar Google OAuth apenas se estivermos no browser
+      if (typeof window !== 'undefined') {
+        await this.initGoogleAuth();
+      }
+
+      // Inicializar GitHub OAuth
+      this.initGitHubAuth();
+    } catch (error) {
+      console.error('Erro ao inicializar AuthService:', error);
+    }
   }
 
   // Buscar dados públicos do GitHub por username
@@ -64,16 +85,6 @@ class AuthService {
     }
   }
 
-  async init() {
-    // Inicializar Google OAuth
-    if (typeof window !== 'undefined' && window.gapi) {
-      await this.initGoogleAuth();
-    }
-
-    // Inicializar GitHub OAuth
-    this.initGitHubAuth();
-  }
-
   // Inicializar Google OAuth
   async initGoogleAuth() {
     try {
@@ -83,17 +94,17 @@ class AuthService {
       
       // Aguardar o Google API carregar
       let attempts = 0;
-      const maxAttempts = 10;
+      const maxAttempts = 20; // Aumentado para dar mais tempo
       
       while (!window.gapi && attempts < maxAttempts) {
-        console.log(`Aguardando Google API carregar... tentativa ${attempts + 1}`);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        console.log(`Aguardando Google API carregar... tentativa ${attempts + 1}/${maxAttempts}`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Aumentado para 1 segundo
         attempts++;
       }
 
       if (!window.gapi) {
         console.error('Google API não carregou após múltiplas tentativas');
-        return;
+        throw new Error('Google API não disponível');
       }
 
       console.log('Google API detectada, carregando auth2...');
@@ -111,9 +122,13 @@ class AuthService {
               return;
             }
 
+            // Aguardar um pouco antes de inicializar
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             this.googleAuth = await window.gapi.auth2.init({
               client_id: OAUTH_CONFIG.GOOGLE.CLIENT_ID,
-              scope: OAUTH_CONFIG.GOOGLE.SCOPE
+              scope: OAUTH_CONFIG.GOOGLE.SCOPE,
+              ux_mode: 'popup' // Forçar modo popup para evitar problemas de redirecionamento
             });
             console.log('Google Auth inicializado com sucesso!');
             resolve();
@@ -125,6 +140,7 @@ class AuthService {
       });
     } catch (error) {
       console.error('Erro ao inicializar Google Auth:', error);
+      throw error;
     }
   }
 
@@ -147,6 +163,9 @@ class AuthService {
     try {
       console.log('Iniciando login com Google...');
       
+      // Garantir que o serviço está inicializado
+      await this.ensureInitialized();
+      
       // Verificar se Google Auth está inicializado
       if (!this.googleAuth) {
         console.log('Google Auth não inicializado, tentando inicializar...');
@@ -155,49 +174,99 @@ class AuthService {
 
       if (!this.googleAuth) {
         console.error('Falha ao inicializar Google Auth');
-        // Fallback para dados simulados do Google com foto real
-        const simulatedGoogleUser = {
-          id: `google_${Date.now()}`,
-          name: 'Sthevan Santos',
-          email: 'sthevan027@gmail.com',
-          avatar: 'https://lh3.googleusercontent.com/a/default-user=s96-c',
-          provider: 'google',
-          accessToken: 'simulated_google_token',
-          loginTime: new Date().toISOString()
-        };
-        console.log('Usando dados simulados do Google:', simulatedGoogleUser);
-        return { success: true, user: simulatedGoogleUser };
+        throw new Error('Google Auth não disponível');
       }
 
       console.log('Google Auth disponível, fazendo login...');
-      const googleUser = await this.googleAuth.signIn();
-      const profile = googleUser.getBasicProfile();
-      const authResponse = googleUser.getAuthResponse();
+      
+      // Verificar se já está logado
+      if (this.googleAuth.isSignedIn.get()) {
+        console.log('Usuário já está logado no Google');
+        const googleUser = this.googleAuth.currentUser.get();
+        const profile = googleUser.getBasicProfile();
+        const authResponse = googleUser.getAuthResponse();
 
-      // Obter foto em alta qualidade
-      let avatarUrl = profile.getImageUrl();
-      if (avatarUrl) {
-        // Modificar URL para alta qualidade
-        avatarUrl = avatarUrl.replace(/s\d+-c/, 's300-c');
-      } else {
-        // Usar sua foto real como fallback
-        avatarUrl = 'https://lh3.googleusercontent.com/a/ACg8ocLvBP_TkJBnElJxmFJ3TkHODn-F2x4iF5GQlp8yng=s300-c';
+        // Obter foto em alta qualidade
+        let avatarUrl = profile.getImageUrl();
+        if (avatarUrl) {
+          // Modificar URL para alta qualidade
+          avatarUrl = avatarUrl.replace(/s\d+-c/, 's300-c');
+        } else {
+          // Usar sua foto real como fallback
+          avatarUrl = 'https://lh3.googleusercontent.com/a/ACg8ocLvBP_TkJBnElJxmFJ3TkHODn-F2x4iF5GQlp8yng=s300-c';
+        }
+
+        const userData = {
+          id: `google_${profile.getId()}`,
+          name: profile.getName(),
+          email: profile.getEmail(),
+          avatar: avatarUrl,
+          provider: 'google',
+          accessToken: authResponse.access_token,
+          loginTime: new Date().toISOString()
+        };
+
+        console.log('Usuário já logado:', userData);
+        return { success: true, user: userData };
       }
 
-      const userData = {
-        id: `google_${profile.getId()}`,
-        name: profile.getName(),
-        email: profile.getEmail(),
-        avatar: avatarUrl,
-        provider: 'google',
-        accessToken: authResponse.access_token,
-        loginTime: new Date().toISOString()
-      };
+      // Tentar login com popup primeiro
+      try {
+        console.log('Tentando login com popup...');
+        const googleUser = await this.googleAuth.signIn({
+          ux_mode: 'popup',
+          prompt: 'select_account'
+        });
+        
+        const profile = googleUser.getBasicProfile();
+        const authResponse = googleUser.getAuthResponse();
 
-      console.log('Login Google bem-sucedido:', userData);
-      return { success: true, user: userData };
+        // Obter foto em alta qualidade
+        let avatarUrl = profile.getImageUrl();
+        if (avatarUrl) {
+          // Modificar URL para alta qualidade
+          avatarUrl = avatarUrl.replace(/s\d+-c/, 's300-c');
+        } else {
+          // Usar sua foto real como fallback
+          avatarUrl = 'https://lh3.googleusercontent.com/a/ACg8ocLvBP_TkJBnElJxmFJ3TkHODn-F2x4iF5GQlp8yng=s300-c';
+        }
+
+        const userData = {
+          id: `google_${profile.getId()}`,
+          name: profile.getName(),
+          email: profile.getEmail(),
+          avatar: avatarUrl,
+          provider: 'google',
+          accessToken: authResponse.access_token,
+          loginTime: new Date().toISOString()
+        };
+
+        console.log('Login Google bem-sucedido:', userData);
+        return { success: true, user: userData };
+      } catch (popupError) {
+        console.log('Popup falhou, tentando redirecionamento...', popupError);
+        
+        // Fallback para redirecionamento
+        const redirectUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${OAUTH_CONFIG.GOOGLE.CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.SCOPE)}&response_type=code&access_type=offline&prompt=consent`;
+        
+        console.log('Redirecionando para:', redirectUrl);
+        window.location.href = redirectUrl;
+        
+        return { success: true, pending: true };
+      }
     } catch (error) {
       console.error('Erro no login Google:', error);
+      
+      // Verificar se é um erro específico do Google
+      if (error.error === 'popup_closed_by_user') {
+        console.log('Usuário fechou o popup de login');
+        return { success: false, error: 'Login cancelado pelo usuário' };
+      }
+      
+      if (error.error === 'access_denied') {
+        console.log('Acesso negado pelo usuário');
+        return { success: false, error: 'Acesso negado' };
+      }
       
       // Fallback para dados simulados em caso de erro com foto real
       const simulatedGoogleUser = {
@@ -351,7 +420,7 @@ class AuthService {
     console.log('Parâmetros da URL:', { code, state, error });
 
     if (error) {
-      console.error('Erro na autorização GitHub:', error);
+      console.error('Erro na autorização:', error);
       return null;
     }
 
@@ -364,6 +433,31 @@ class AuthService {
 
     console.log('Nenhum código de autorização encontrado');
     return null;
+  }
+
+  // Processar callback do Google OAuth
+  async processGoogleCallback(code) {
+    try {
+      console.log('Processando callback do Google com código:', code);
+      
+      // Em uma implementação real, você trocaria o código por um token
+      // Por enquanto, vamos usar dados simulados
+      const simulatedGoogleUser = {
+        id: `google_${Date.now()}`,
+        name: 'Sthevan Santos',
+        email: 'sthevan.ssantos@gmail.com',
+        avatar: 'https://lh3.googleusercontent.com/a/ACg8ocLvBP_TkJBnElJxmFJ3TkHODn-F2x4iF5GQlp8yng=s300-c',
+        provider: 'google',
+        accessToken: 'simulated_google_token',
+        loginTime: new Date().toISOString()
+      };
+      
+      console.log('Dados simulados do Google criados:', simulatedGoogleUser);
+      return { success: true, user: simulatedGoogleUser };
+    } catch (error) {
+      console.error('Erro ao processar callback Google:', error);
+      return { success: false, error: error.message };
+    }
   }
 
   // Logout

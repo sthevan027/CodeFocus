@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Timer from './components/Timer';
 import LoginScreen from './components/LoginScreen';
+import RegisterScreen from './components/RegisterScreen';
 import UserProfile from './components/UserProfile';
 import SettingsScreen from './components/SettingsScreen';
 import EditProfileModal from './components/EditProfileModal';
@@ -11,6 +12,7 @@ function AppContent() {
   const { user, isAuthenticated, loading } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
   const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   if (loading) {
     return (
@@ -24,7 +26,10 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <LoginScreen />;
+    if (showRegister) {
+      return <RegisterScreen onGoToLogin={() => setShowRegister(false)} />;
+    }
+    return <LoginScreen onGoToRegister={() => setShowRegister(true)} />;
   }
 
   return (

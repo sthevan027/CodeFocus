@@ -8,7 +8,7 @@
 export const OAUTH_CONFIG = {
   // Google OAuth
   GOOGLE: {
-    CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
+    CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || '543755830812-q79i7d2u5bk25g52h3b4aguf9nfforv1.apps.googleusercontent.com',
     CLIENT_SECRET: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET',
     REDIRECT_URI: process.env.REACT_APP_GOOGLE_REDIRECT_URI || 'http://localhost:3000',
     SCOPE: 'email profile'

@@ -13,6 +13,9 @@
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>CodeFocus</title>
     
+    <!-- Content Security Policy mais permissiva para desenvolvimento -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' data: https:; connect-src 'self' https:; frame-src 'self' https:; object-src 'none';">
+    
     <!-- Google OAuth -->
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://apis.google.com/js/platform.js"></script>
