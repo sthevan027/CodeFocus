@@ -1,0 +1,20 @@
+CREATE TABLE reports (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  report_type TEXT NOT NULL,
+  report_date DATETIME NOT NULL,
+  total_cycles INTEGER DEFAULT 0,
+  completed_cycles INTEGER DEFAULT 0,
+  interrupted_cycles INTEGER DEFAULT 0,
+  total_focus_time INTEGER DEFAULT 0,
+  total_break_time INTEGER DEFAULT 0,
+  cycles_data TEXT DEFAULT '[]',
+  productivity_score INTEGER DEFAULT 0,
+  include_git_data BOOLEAN DEFAULT 1,
+  include_statistics BOOLEAN DEFAULT 1,
+  include_charts BOOLEAN DEFAULT 1,
+  file_path TEXT,
+  file_size INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+); 

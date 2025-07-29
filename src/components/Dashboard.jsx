@@ -1,95 +1,66 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 import ProductivityStats from './ProductivityStats';
-import ActivityHistory from './ActivityHistory';
-import TagManager from './TagManager';
-import QuickNotes from './QuickNotes';
 import ProgressCharts from './ProgressCharts';
+import QuickNotes from './QuickNotes';
+import { useAuth } from '../context/AuthContext';
+import TagManager from './TagManager';
 
-const Dashboard = ({ isOpen, onClose }) => {
+const Dashboard = ({ onClose }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [stats, setStats] = useState({
-    totalFocusTime: 0,
-    totalSessions: 0,
-    averageSessionLength: 0,
-    weeklyGoal: 25, // horas por semana
-    weeklyProgress: 0,
-    tags: {},
-    recentActivities: []
+    todayFocus: 0,
+    weekFocus: 0,
+    totalCycles: 0,
+    productivity: 0
   });
 
-  useEffect(() => {
-    if (isOpen) {
-      loadDashboardData();
-    }
-  }, [isOpen, user]);
-
-  const loadDashboardData = () => {
+  // Função para carregar dados do dashboard
+  const loadDashboardData = React.useCallback(() => {
     try {
-      // Carregar dados do localStorage
-      const history = JSON.parse(localStorage.getItem(`codefocus-history-${user?.id}`) || '[]');
-      const notes = JSON.parse(localStorage.getItem(`codefocus-notes-${user?.id}`) || '[]');
-      const tags = JSON.parse(localStorage.getItem(`codefocus-tags-${user?.id}`) || '{}');
-
-      // Calcular estatísticas
-      const totalFocusTime = history.reduce((total, session) => {
-        return total + (session.duration || 0);
-      }, 0);
-
-      const totalSessions = history.length;
-      const averageSessionLength = totalSessions > 0 ? Math.round(totalFocusTime / totalSessions / 60) : 0;
-
-      // Calcular progresso semanal
-      const now = new Date();
-      const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-      const weekEnd = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
+      const userKey = user ? `codefocus-history-${user.id}` : 'codefocus-history';
+      const history = JSON.parse(localStorage.getItem(userKey) || '[]');
       
-      const weeklySessions = history.filter(session => {
-        const sessionDate = new Date(session.timestamp);
-        return sessionDate >= weekStart && sessionDate < weekEnd;
-      });
-
-      const weeklyTime = weeklySessions.reduce((total, session) => {
-        return total + (session.duration || 0);
-      }, 0);
-
-      const weeklyProgress = Math.round((weeklyTime / (stats.weeklyGoal * 3600)) * 100);
-
-      // Processar tags
-      const tagStats = {};
-      history.forEach(session => {
-        if (session.tags && session.tags.length > 0) {
-          session.tags.forEach(tag => {
-            if (!tagStats[tag]) {
-              tagStats[tag] = { time: 0, sessions: 0 };
-            }
-            tagStats[tag].time += session.duration || 0;
-            tagStats[tag].sessions += 1;
-          });
-        }
-      });
-
-      // Atividades recentes (últimas 10)
-      const recentActivities = [...history, ...notes]
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 10);
-
+      const today = new Date().toDateString();
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      
+      const todaySessions = history.filter(session => 
+        new Date(session.timestamp).toDateString() === today && session.type === 'session'
+      );
+      
+      const weekSessions = history.filter(session => 
+        new Date(session.timestamp) >= weekAgo && session.type === 'session'
+      );
+      
+      const todayFocus = todaySessions.reduce((total, session) => total + (session.duration || 0), 0);
+      const weekFocus = weekSessions.reduce((total, session) => total + (session.duration || 0), 0);
+      
+      // Calcular produtividade
+      const focusSessions = todaySessions.filter(s => s.phase === 'focus');
+      const productivity = focusSessions.length > 0 ? (focusSessions.length / (focusSessions.length + 1)) * 100 : 0;
+      
       setStats({
-        totalFocusTime,
-        totalSessions,
-        averageSessionLength,
-        weeklyGoal: stats.weeklyGoal,
-        weeklyProgress,
-        tags: tagStats,
-        recentActivities
+        todayFocus: Math.round(todayFocus / 60), // em minutos
+        weekFocus: Math.round(weekFocus / 60),
+        totalCycles: history.filter(s => s.type === 'session').length,
+        productivity: Math.round(productivity)
       });
+      
+      // Carregar tags mais usadas
+      const userTagsKey = user ? `codefocus-user-tags-${user.id}` : 'codefocus-user-tags';
+      const _userTags = JSON.parse(localStorage.getItem(userTagsKey) || '{}');
+      
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);
     }
-  };
+  }, [user]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    loadDashboardData();
+  }, [loadDashboardData]);
+
+  if (!user) return null; // Ensure user is logged in
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

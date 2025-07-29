@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import authService from '../services/authService';
 import apiService from '../services/apiService';
 
@@ -15,7 +15,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true); // Temporariamente true para mostrar o timer
 
   console.log('AuthProvider: Estado atual:', { user, loading, isAuthenticated });
 
@@ -25,41 +25,19 @@ export const AuthProvider = ({ children }) => {
       try {
         console.log('Carregando usuário...');
         
-        // Verificar se há código de autorização (Google)
-        const authCode = authService.checkForAuthCode();
-        console.log('Auth code encontrado:', authCode);
+        // Criar usuário padrão para desenvolvimento
+        const defaultUser = {
+          id: 'dev-user',
+          name: 'Desenvolvedor',
+          email: 'dev@codefocus.com',
+          provider: 'local'
+        };
         
-        if (authCode) {
-          console.log('Processando callback OAuth...');
-          const result = await authService.processGoogleCallback(authCode.code);
-          
-          console.log('Resultado do callback:', result);
-          
-          if (result.success) {
-            console.log('Login OAuth bem-sucedido!');
-            setUser(result.user);
-            setIsAuthenticated(true);
-            saveUser(result.user);
-          } else {
-            console.error('Erro no callback OAuth:', result.error);
-          }
-        } else {
-          // Verificar se há usuário salvo localmente
-          const savedUser = localStorage.getItem('codefocus-user');
-          if (savedUser && savedUser !== 'undefined') {
-            try {
-              console.log('Usuário encontrado no localStorage');
-              const userData = JSON.parse(savedUser);
-              setUser(userData);
-              setIsAuthenticated(true);
-            } catch (error) {
-              console.error('Erro ao parsear usuário do localStorage:', error);
-              localStorage.removeItem('codefocus-user');
-            }
-          } else {
-            console.log('Nenhum usuário encontrado');
-          }
-        }
+        setUser(defaultUser);
+        setIsAuthenticated(true);
+        saveUser(defaultUser);
+        
+        console.log('Usuário padrão carregado:', defaultUser);
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
       } finally {

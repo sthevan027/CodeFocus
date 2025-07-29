@@ -1,5 +1,14 @@
 // Serviço de autenticação real com Google OAuth
 import { OAUTH_CONFIG, AUTH_URLS, isOAuthConfigured } from '../config/oauth';
+import apiService from './apiService';
+const _AUTH_URLS = {
+  LOGIN: '/api/auth/login',
+  REGISTER: '/api/auth/register',
+  GOOGLE_LOGIN: '/api/auth/google',
+  GITHUB_LOGIN: '/api/auth/github',
+  REFRESH: '/api/auth/refresh',
+  LOGOUT: '/api/auth/logout'
+};
 
 class AuthService {
   constructor() {

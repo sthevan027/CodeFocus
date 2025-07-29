@@ -6,7 +6,7 @@ Backend da aplicação CodeFocus - Produtividade Dev no Ritmo do Código
 
 - **FastAPI** - Framework web moderno e rápido
 - **SQLAlchemy** - ORM para banco de dados
-- **PostgreSQL** - Banco de dados principal
+- **SQLite** - Banco de dados local
 - **Alembic** - Migrações de banco de dados
 - **JWT** - Autenticação com tokens
 - **OAuth** - Integração com Google e GitHub
@@ -180,10 +180,7 @@ cp env.example .env
 
 ### 3. Configurar Banco de Dados
 ```bash
-# Criar banco PostgreSQL
-createdb codefocus_db
-
-# Executar migrações
+# Executar migrações (SQLite será criado automaticamente)
 alembic upgrade head
 ```
 

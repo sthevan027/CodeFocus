@@ -1,4 +1,4 @@
-import React from 'react';
+import { useState } from 'react';
 import { OAUTH_SETUP_INSTRUCTIONS } from '../config/oauth';
 
 const OAuthSetupModal = ({ isOpen, onClose }) => {

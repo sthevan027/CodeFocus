@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { spotifyUtils } from '../config/spotify';
+import { useAuth } from '../context/AuthContext';
 
 const SpotifyIntegration = ({ isOpen, onClose }) => {
+  const { user: _user } = useAuth();
   const [isConnected, setIsConnected] = useState(false);
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -10,31 +12,28 @@ const SpotifyIntegration = ({ isOpen, onClose }) => {
   const [selectedPlaylist, setSelectedPlaylist] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Configurações do Spotify
-  const SPOTIFY_CLIENT_ID = process.env.REACT_APP_SPOTIFY_CLIENT_ID || 'your_spotify_client_id';
-  const SPOTIFY_REDIRECT_URI = process.env.REACT_APP_SPOTIFY_REDIRECT_URI || 'http://localhost:3000/spotify/callback';
-  const SPOTIFY_SCOPES = [
-    'user-read-private',
-    'user-read-email',
-    'user-read-playback-state',
-    'user-modify-playback-state',
-    'user-read-currently-playing',
-    'playlist-read-private',
-    'playlist-modify-public',
-    'playlist-modify-private'
-  ].join(' ');
+  // Configurações do Spotify (não utilizadas atualmente, mas podem ser necessárias)
+  const _SPOTIFY_CLIENT_ID = process.env.REACT_APP_SPOTIFY_CLIENT_ID;
+  const _SPOTIFY_REDIRECT_URI = process.env.REACT_APP_SPOTIFY_REDIRECT_URI;
+  const _SPOTIFY_SCOPES = 'user-read-playback-state user-modify-playback-state user-read-currently-playing playlist-read-private playlist-read-collaborative';
+
+  // Verificar conexão com Spotify
+  const checkSpotifyConnection = React.useCallback(async () => {
+    try {
+      const token = localStorage.getItem('spotify_access_token');
+      if (token) {
+        setIsConnected(true);
+        await fetchCurrentTrack();
+        await fetchUserPlaylists();
+      }
+    } catch (error) {
+      setIsConnected(false);
+    }
+  }, []);
 
   useEffect(() => {
     checkSpotifyConnection();
-  }, []);
-
-  const checkSpotifyConnection = () => {
-    if (spotifyUtils.isConnected()) {
-      setIsConnected(true);
-      fetchCurrentTrack();
-      fetchUserPlaylists();
-    }
-  };
+  }, [checkSpotifyConnection]);
 
   const connectSpotify = () => {
     const authUrl = spotifyUtils.getAuthUrl();

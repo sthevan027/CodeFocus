@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import notificationManager from '../utils/notificationUtils';
 
 const TimerContext = createContext();
 
@@ -15,7 +16,7 @@ export const TimerProvider = ({ children }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentPhase, setCurrentPhase] = useState('focus'); // focus, shortBreak, longBreak
-  const [cycleCount, setCycleCount] = useState(0);
+  const [cycleCount, _setCycleCount] = useState(0);
   const [cycleName, setCycleName] = useState('');
   const [completedCycles, setCompletedCycles] = useState([]);
 

@@ -1,6 +1,10 @@
-import React from 'react';
+import { useEffect } from 'react';
 
 const ActivityHistory = ({ activities }) => {
+  useEffect(() => {
+    // Effect logic here if needed
+  }, [activities]);
+
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('pt-BR', {
       day: '2-digit',

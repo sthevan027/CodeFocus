@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import gitManager from '../utils/gitUtils';
 import notificationManager from '../utils/notificationUtils';
 

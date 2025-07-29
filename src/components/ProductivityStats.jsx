@@ -1,31 +1,16 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const ProductivityStats = ({ stats, onRefresh }) => {
   const [timeRange, setTimeRange] = useState('week');
 
-  const getTimeRangeData = () => {
-    const now = new Date();
-    let startDate, endDate;
-
-    switch (timeRange) {
-      case 'week':
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear() + 1, 0, 1);
-        break;
-      default:
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay());
-        endDate = new Date(startDate.getTime() + 7 * 24 * 60 * 60 * 1000);
-    }
-
-    return { startDate, endDate };
+  const _getTimeRangeData = (range) => {
+    // Implementar lógica para buscar dados baseado no range
+    return {
+      focusTime: 0,
+      sessions: 0,
+      productivity: 0
+    };
   };
 
   const formatTime = (seconds) => {

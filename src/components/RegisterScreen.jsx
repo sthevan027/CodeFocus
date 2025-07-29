@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const RegisterScreen = ({ onRegister, onGoToLogin }) => {
+const RegisterScreen = ({ onSwitchToLogin }) => {
   const { registerUser, loading } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -96,7 +96,7 @@ const RegisterScreen = ({ onRegister, onGoToLogin }) => {
         <div className="text-center mt-4">
           <button
             className="text-blue-400 hover:underline text-sm"
-            onClick={onGoToLogin}
+            onClick={onSwitchToLogin}
             disabled={loading}
           >
             Já tem conta? Entrar

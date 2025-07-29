@@ -1,4 +1,4 @@
-import React from 'react';
+import { useAuth } from '../context/AuthContext';
 import UserProfile from './UserProfile';
 
 const Header = ({ onSettingsClick, onEditProfile, onDashboardClick, onSpotifyClick }) => {

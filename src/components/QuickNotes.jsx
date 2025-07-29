@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 const QuickNotes = ({ activities, onUpdate, userId }) => {
   const [notes, setNotes] = useState([]);

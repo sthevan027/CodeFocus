@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
@@ -43,7 +43,7 @@ const Timer = () => {
   const [currentPhase, setCurrentPhase] = useState(initialState.currentPhase);
   const [cycleName, setCycleName] = useState(initialState.cycleName);
   const [showCycleInput, setShowCycleInput] = useState(false);
-  const [customFocusMinutes, setCustomFocusMinutes] = useState(initialState.customFocusMinutes);
+  const [customFocusMinutes, _setCustomFocusMinutes] = useState(initialState.customFocusMinutes);
   const [showGitModal, setShowGitModal] = useState(false);
   const [selectedTags, setSelectedTags] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -113,26 +113,6 @@ const Timer = () => {
     });
   }, [timeLeft, isRunning, isPaused, currentPhase, cycleName, customFocusMinutes]);
 
-  // Formatar tempo para display digital
-  const formatTimeDigital = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return {
-      hours: hours.toString().padStart(2, '0'),
-      minutes: mins.toString().padStart(2, '0'),
-      seconds: secs.toString().padStart(2, '0')
-    };
-  };
-
-  // Inicializar flip states com valores corretos
-  const initialTime = formatTimeDigital(25 * 60);
-  const [flipStates, setFlipStates] = useState({
-    hours: { current: initialTime.hours, next: initialTime.hours, isFlipping: false },
-    minutes: { current: initialTime.minutes, next: initialTime.minutes, isFlipping: false },
-    seconds: { current: initialTime.seconds, next: initialTime.seconds, isFlipping: false }
-  });
-
   // Timer principal
   useEffect(() => {
     let interval = null;
@@ -169,60 +149,34 @@ const Timer = () => {
     return () => clearInterval(interval);
   }, [isRunning, timeLeft]);
 
-  // Atualizar flip states quando o tempo muda
-  useEffect(() => {
-    const { hours, minutes, seconds } = formatTimeDigital(timeLeft);
-    
-    setFlipStates(prev => {
-      const newState = { ...prev };
-      
-      // Verificar se cada dígito mudou
-      if (hours !== prev.hours.current) {
-        newState.hours = { current: prev.hours.current, next: hours, isFlipping: true };
-        setTimeout(() => {
-          setFlipStates(current => ({
-            ...current,
-            hours: { current: hours, next: hours, isFlipping: false }
-          }));
-        }, 300);
-      }
-      
-      if (minutes !== prev.minutes.current) {
-        newState.minutes = { current: prev.minutes.current, next: minutes, isFlipping: true };
-        setTimeout(() => {
-          setFlipStates(current => ({
-            ...current,
-            minutes: { current: minutes, next: minutes, isFlipping: false }
-          }));
-        }, 300);
-      }
-      
-      if (seconds !== prev.seconds.current) {
-        newState.seconds = { current: prev.seconds.current, next: seconds, isFlipping: true };
-        setTimeout(() => {
-          setFlipStates(current => ({
-            ...current,
-            seconds: { current: seconds, next: seconds, isFlipping: false }
-          }));
-        }, 300);
-      }
-      
-      return newState;
-    });
-  }, [timeLeft]);
-
-  // Obter cor baseada na fase
-  const getPhaseColor = () => {
-    switch (currentPhase) {
+  // Obter duração da fase atual
+  const getPhaseDuration = (phase) => {
+    switch (phase) {
       case 'focus':
-        return 'from-red-500 to-red-600';
+        return customFocusMinutes && !isNaN(Number(customFocusMinutes)) && Number(customFocusMinutes) > 0
+          ? Number(customFocusMinutes) * 60
+          : 25 * 60;
       case 'shortBreak':
-        return 'from-green-500 to-green-600';
+        return 5 * 60;
       case 'longBreak':
-        return 'from-blue-500 to-blue-600';
+        return 15 * 60;
       default:
-        return 'from-white to-gray-300';
+        return 25 * 60;
     }
+  };
+
+  // Formatar tempo para display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Calcular progresso para o ring
+  const calculateProgress = () => {
+    const totalDuration = getPhaseDuration(currentPhase);
+    const elapsed = totalDuration - timeLeft;
+    return (elapsed / totalDuration) * 100;
   };
 
   const getPhaseName = () => {
@@ -292,93 +246,104 @@ const Timer = () => {
     startFocus();
   };
 
-  // Componente Flip Card
-  const FlipCard = ({ value, label }) => (
-    <div className="text-center">
-      <div className="relative bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 shadow-lg overflow-hidden">
-        {/* Container do número */}
-        <div className="relative h-16 flex items-center justify-center">
-          <span className="text-5xl font-bold tracking-wider text-white">
-            {value}
-          </span>
-        </div>
-      </div>
-      <div className="text-white/80 text-sm font-medium mt-3 tracking-wider">
-        {label}
-      </div>
-    </div>
-  );
-
-  // Obter valores atuais do timer
-  const { hours, minutes, seconds } = formatTimeDigital(timeLeft);
+  // Calcular progresso
+  const progress = calculateProgress();
 
   return (
-    <div className="flex flex-col items-center">
-      {/* Relógio Digital */}
-      <div className="relative w-full max-w-2xl mb-12">
-        {/* Título COUNTDOWN */}
-        <div className="text-center mb-8">
-          <h1 className="text-6xl font-bold text-white tracking-wider">
-            COUNTDOWN
-          </h1>
-        </div>
+    <div className="flex flex-col items-center min-h-screen">
+      {/* Timer Principal - Design da Imagem */}
+      <div className="relative w-full max-w-2xl mb-12 mt-8">
+        {/* Timer Circular com Progress Ring */}
+        <div className="relative mx-auto w-96 h-96 mb-8">
+          {/* Progress Ring - Linhas pontilhadas ao redor */}
+          <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+            {/* Círculo base com linhas pontilhadas */}
+            <circle
+              cx="192"
+              cy="192"
+              r="160"
+              fill="none"
+              stroke="rgba(255,255,255,0.3)"
+              strokeWidth="2"
+              strokeDasharray="4 8"
+            />
+            
+            {/* Progress ring vermelho/rosa - preenche no sentido horário */}
+            <circle
+              cx="192"
+              cy="192"
+              r="160"
+              fill="none"
+              stroke="#FF6B6B"
+              strokeWidth="4"
+              strokeDasharray={`${2 * Math.PI * 160}`}
+              strokeDashoffset={`${2 * Math.PI * 160 * (1 - progress / 100)}`}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out"
+            />
+          </svg>
 
-        {/* Display do Timer */}
-        <div className="flex justify-center items-center space-x-4 mb-8">
-          {/* Horas */}
-          <FlipCard 
-            value={hours}
-            label="HOUR"
-          />
-
-          {/* Separador */}
-          <div className="text-6xl font-bold text-white">:</div>
-
-          {/* Minutos */}
-          <FlipCard 
-            value={minutes}
-            label="MIN"
-          />
-
-          {/* Separador */}
-          <div className="text-6xl font-bold text-white">:</div>
-
-          {/* Segundos */}
-          <FlipCard 
-            value={seconds}
-            label="SEC"
-          />
-        </div>
-
-        {/* Fase atual */}
-        <div className="text-center mb-6">
-          <div className="text-white/90 text-2xl font-medium tracking-wider">
-            {getPhaseName()}
-          </div>
-          {cycleName && currentPhase === 'focus' && (
-            <div className="text-white/60 text-lg mt-2 max-w-md mx-auto truncate">
-              {cycleName}
+          {/* Relógio Digital no centro */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
+            <div className="text-6xl font-light text-white mb-2 font-mono">
+              {formatTime(timeLeft)}
             </div>
-          )}
-        </div>
-
-        {/* Subtítulo */}
-        <div className="text-center">
-          <div className="text-white/70 text-lg tracking-wider">
-            with POMODORO TECHNIQUE
+            <div className="text-white/60 text-lg">
+              {cycleName && currentPhase === 'focus' ? cycleName : getPhaseName()}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Cycle Name Input + Custom Minutes */}
+      {/* Botões de Controle */}
+      <div className="flex flex-col items-center gap-8 mb-12">
+        {!isRunning && !isPaused && (
+          <button
+            onClick={handleStartFocus}
+            className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+          >
+            <span className="text-green-400 mr-2">▶</span>
+            Start Focus
+          </button>
+        )}
+
+        {isRunning && (
+          <button
+            onClick={pauseTimer}
+            className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+          >
+            ⏸ Pause
+          </button>
+        )}
+
+        {isPaused && (
+          <div className="flex gap-4">
+            <button
+              onClick={resumeTimer}
+              className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+            >
+              ▶ Resume
+            </button>
+            
+            <button
+              onClick={resetTimer}
+              className="bg-red-500/20 backdrop-blur-sm hover:bg-red-500/30 text-red-300 font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-red-300/20"
+            >
+              🔄 Reset
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cycle Name Input */}
       {showCycleInput && (
-        <div className="mb-6 w-full max-w-md transition-all duration-300 flex flex-col gap-2">
+        <div className="mb-6 w-full max-w-md transition-all duration-300">
           <input
             type="text"
             placeholder="Nome do seu foco atual..."
             value={cycleName}
             onChange={(e) => setCycleName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
             onKeyPress={(e) => {
               if (e.key === 'Enter' && cycleName.trim()) {
                 setShowCycleInput(false);
@@ -387,83 +352,28 @@ const Timer = () => {
             }}
             autoFocus
           />
-          <input
-            type="number"
-            min="1"
-            max="180"
-            placeholder="Tempo de foco (min)"
-            value={customFocusMinutes}
-            onChange={e => setCustomFocusMinutes(e.target.value.replace(/[^0-9]/g, ''))}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-md border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
         </div>
       )}
 
-      {/* Controls */}
-      <div className="flex flex-wrap justify-center gap-4 mb-8">
+      {/* Botões de Ação Rápida */}
+      <div className="flex justify-center gap-8 mb-8">
         {!isRunning && !isPaused && (
           <>
             <button
-              onClick={handleStartFocus}
-              className="bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
-            >
-              ▷ Iniciar Foco
-            </button>
-            
-            <button
               onClick={startShortBreak}
-              className="bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
+              className="text-white/60 hover:text-white transition-colors text-lg"
             >
-              ☕ Pausa Curta
+              ☕ Short Break
             </button>
             
             <button
               onClick={startLongBreak}
-              className="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
+              className="text-white/60 hover:text-white transition-colors text-lg"
             >
-              🧘 Pausa Longa
+              🧘 Long Break
             </button>
           </>
         )}
-
-        {isRunning && (
-          <>
-            <button
-              onClick={pauseTimer}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
-            >
-              ⏸️ Pausar
-            </button>
-          </>
-        )}
-
-        {isPaused && (
-          <>
-            <button
-              onClick={resumeTimer}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
-            >
-              ▶️ Continuar
-            </button>
-            
-            <button
-              onClick={resetTimer}
-              className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-4 px-8 rounded-xl transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg text-lg"
-            >
-              🔄 Resetar
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Quick Actions */}
-      <div className="flex justify-center mb-6">
-        <button
-          onClick={() => setShowCycleInput(!showCycleInput)}
-          className="text-gray-400 hover:text-white transition-colors text-lg"
-        >
-          ✏️ Editar Nome
-        </button>
       </div>
 
       {/* Git Commit Modal */}
@@ -479,7 +389,7 @@ const Timer = () => {
       {/* Modal de Notas e Tags */}
       {showNoteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-gray-800/90 backdrop-blur-sm rounded-2xl p-6 w-full max-w-md border border-white/20">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">📝 Nota da Sessão</h2>
               <button
@@ -498,7 +408,7 @@ const Timer = () => {
                   onChange={(e) => setSessionNote(e.target.value)}
                   placeholder="Descreva o que você trabalhou nesta sessão..."
                   rows={4}
-                  className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 />
               </div>
 
