@@ -266,8 +266,8 @@ const Timer = () => {
               stroke="rgba(255,255,255,0.3)"
               strokeWidth="2"
               strokeDasharray="4 8"
-            />
-            
+          />
+
             {/* Progress ring vermelho/rosa - preenche no sentido horário */}
             <circle
               cx="192"
@@ -280,7 +280,7 @@ const Timer = () => {
               strokeDashoffset={`${2 * Math.PI * 160 * (1 - progress / 100)}`}
               strokeLinecap="round"
               className="transition-all duration-1000 ease-out"
-            />
+          />
           </svg>
 
           {/* Relógio Digital no centro */}
@@ -290,7 +290,7 @@ const Timer = () => {
             </div>
             <div className="text-white/60 text-lg">
               {cycleName && currentPhase === 'focus' ? cycleName : getPhaseName()}
-            </div>
+        </div>
           </div>
         </div>
       </div>

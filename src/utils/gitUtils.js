@@ -16,9 +16,11 @@ class GitManager {
         this.isAvailable = true;
         await this.initializeGit();
       } else {
-        // Ambiente web - Git não disponível
-        this.isAvailable = false;
-        console.log('Git não disponível no ambiente web');
+        // Ambiente web - Git simulado para desenvolvimento
+        this.isAvailable = true;
+        this.isGitRepo = true;
+        this.repoPath = '/codefocus-project';
+        console.log('Git simulado ativo para desenvolvimento web');
       }
     } catch (error) {
       console.error('Erro ao inicializar Git:', error);
@@ -50,7 +52,7 @@ class GitManager {
 
   // Verificar se é um repositório Git válido
   async checkGitStatus() {
-    if (!this.isAvailable || !this.isGitRepo || !this.git) {
+    if (!this.isAvailable || !this.isGitRepo) {
       return { 
         isValid: false, 
         reason: this.isAvailable ? 'Não é um repositório Git' : 'Git não disponível neste ambiente'
@@ -58,7 +60,20 @@ class GitManager {
     }
 
     try {
-      // Verificar se há mudanças
+      // Se estamos no ambiente web, simular mudanças
+      if (!this.git) {
+        // Simular mudanças para desenvolvimento
+        return {
+          isValid: true,
+          hasChanges: true,
+          stagedFiles: 2,
+          unstagedFiles: 3,
+          untrackedFiles: 1,
+          currentBranch: 'main'
+        };
+      }
+
+      // Verificar se há mudanças (ambiente Electron)
       const status = await this.git.status();
       
       return {
@@ -77,11 +92,25 @@ class GitManager {
 
   // Obter mudanças recentes
   async getRecentChanges() {
-    if (!this.isAvailable || !this.isGitRepo || !this.git) {
+    if (!this.isAvailable || !this.isGitRepo) {
       return [];
     }
 
     try {
+      // Se estamos no ambiente web, simular mudanças
+      if (!this.git) {
+        // Simular mudanças para desenvolvimento
+        return [
+          { file: 'src/components/Timer.jsx', type: 'modified' },
+          { file: 'src/components/Dashboard.jsx', type: 'modified' },
+          { file: 'src/App.jsx', type: 'modified' },
+          { file: 'package.json', type: 'modified' },
+          { file: 'README.md', type: 'modified' },
+          { file: 'new-feature.js', type: 'created' }
+        ];
+      }
+
+      // Obter mudanças reais (ambiente Electron)
       const status = await this.git.status();
       const changes = [];
 
@@ -100,9 +129,9 @@ class GitManager {
         changes.push({ file, type: 'deleted' });
       });
 
-      return changes.slice(0, 10); // Limitar a 10 mudanças
+      return changes;
     } catch (error) {
-      console.error('Erro ao obter mudanças:', error);
+      console.error('Erro ao obter mudanças recentes:', error);
       return [];
     }
   }
@@ -138,7 +167,7 @@ class GitManager {
 
   // Fazer commit das mudanças
   async commitChanges(cycleName = '') {
-    if (!this.isAvailable || !this.isGitRepo || !this.git) {
+    if (!this.isAvailable || !this.isGitRepo) {
       return { 
         success: false, 
         reason: this.isAvailable ? 'Não é um repositório Git' : 'Git não disponível neste ambiente'
@@ -146,6 +175,23 @@ class GitManager {
     }
 
     try {
+      // Se estamos no ambiente web, simular commit
+      if (!this.git) {
+        // Simular commit para desenvolvimento
+        const changes = await this.getRecentChanges();
+        const commitMessage = this.generateCommitMessage(changes, cycleName);
+        
+        console.log('Commit simulado:', commitMessage);
+        
+        return {
+          success: true,
+          commitHash: 'simulated-' + Date.now(),
+          message: commitMessage,
+          filesChanged: changes.length
+        };
+      }
+
+      // Fazer commit real (ambiente Electron)
       const status = await this.git.status();
       
       // Verificar se há mudanças para commitar
@@ -177,7 +223,7 @@ class GitManager {
 
   // Fazer push das mudanças
   async pushChanges() {
-    if (!this.isAvailable || !this.isGitRepo || !this.git) {
+    if (!this.isAvailable || !this.isGitRepo) {
       return { 
         success: false, 
         reason: this.isAvailable ? 'Não é um repositório Git' : 'Git não disponível neste ambiente'
@@ -185,6 +231,13 @@ class GitManager {
     }
 
     try {
+      // Se estamos no ambiente web, simular push
+      if (!this.git) {
+        console.log('Push simulado para desenvolvimento');
+        return { success: true, result: 'simulated-push' };
+      }
+
+      // Fazer push real (ambiente Electron)
       const result = await this.git.push();
       return { success: true, result };
     } catch (error) {

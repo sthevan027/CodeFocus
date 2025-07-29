@@ -12,7 +12,14 @@ const Dashboard = ({ onClose }) => {
     todayFocus: 0,
     weekFocus: 0,
     totalCycles: 0,
-    productivity: 0
+    productivity: 0,
+    totalFocusTime: 0,
+    totalSessions: 0,
+    averageSessionLength: 0,
+    weeklyProgress: 0,
+    weeklyGoal: 40,
+    tags: {},
+    recentActivities: []
   });
 
   // Função para carregar dados do dashboard
@@ -39,17 +46,42 @@ const Dashboard = ({ onClose }) => {
       // Calcular produtividade
       const focusSessions = todaySessions.filter(s => s.phase === 'focus');
       const productivity = focusSessions.length > 0 ? (focusSessions.length / (focusSessions.length + 1)) * 100 : 0;
-      
+
+      // Calcular estatísticas completas
+      const totalFocusTime = history.reduce((total, session) => total + (session.duration || 0), 0);
+      const totalSessions = history.filter(s => s.type === 'session').length;
+      const averageSessionLength = totalSessions > 0 ? Math.round(totalFocusTime / totalSessions / 60) : 0;
+
+      // Calcular progresso semanal (simplificado)
+      const weeklyProgress = Math.min(Math.round((weekFocus / (40 * 60)) * 100), 100);
+
+      // Calcular tags
+      const tags = {};
+      history.forEach(session => {
+        if (session.tags && Array.isArray(session.tags)) {
+          session.tags.forEach(tag => {
+            if (!tags[tag]) {
+              tags[tag] = { time: 0, sessions: 0 };
+            }
+            tags[tag].time += session.duration || 0;
+            tags[tag].sessions += 1;
+          });
+        }
+      });
+
       setStats({
         todayFocus: Math.round(todayFocus / 60), // em minutos
         weekFocus: Math.round(weekFocus / 60),
         totalCycles: history.filter(s => s.type === 'session').length,
-        productivity: Math.round(productivity)
+        productivity: Math.round(productivity),
+        totalFocusTime,
+        totalSessions,
+        averageSessionLength,
+        weeklyProgress,
+        weeklyGoal: 40,
+        tags,
+        recentActivities: history.slice(0, 20) // Últimas 20 atividades
       });
-      
-      // Carregar tags mais usadas
-      const userTagsKey = user ? `codefocus-user-tags-${user.id}` : 'codefocus-user-tags';
-      const _userTags = JSON.parse(localStorage.getItem(userTagsKey) || '{}');
       
     } catch (error) {
       console.error('Erro ao carregar dados do dashboard:', error);

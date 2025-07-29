@@ -44,12 +44,16 @@ export const TimerProvider = ({ children }) => {
     localStorage.setItem('codefocus-settings', JSON.stringify(settings));
   }, [settings]);
 
-  // Carregar histórico salvo do arquivo local (Electron)
+  // Carregar histórico salvo
   useEffect(() => {
-    if (window.historyAPI && window.historyAPI.loadHistory) {
-      window.historyAPI.loadHistory().then((history) => {
-        if (Array.isArray(history)) setCompletedCycles(history);
-      });
+    const savedCycles = localStorage.getItem('codefocus-completed-cycles');
+    if (savedCycles) {
+      try {
+        const cycles = JSON.parse(savedCycles);
+        setCompletedCycles(cycles);
+      } catch (error) {
+        console.error('Erro ao carregar histórico:', error);
+      }
     }
   }, []);
 
@@ -81,33 +85,32 @@ export const TimerProvider = ({ children }) => {
         phase: currentPhase,
       };
       setCompletedCycles(prev => [...prev, completedCycle]);
-      // Salvar no arquivo local (Electron)
-      if (window.historyAPI && window.historyAPI.saveCycle) {
-        window.historyAPI.saveCycle(completedCycle);
-      }
+      
+      // Salvar no localStorage
+      const savedCycles = JSON.parse(localStorage.getItem('codefocus-completed-cycles') || '[]');
+      savedCycles.push(completedCycle);
+      localStorage.setItem('codefocus-completed-cycles', JSON.stringify(savedCycles));
     }
 
     // Notificação
     if (settings.notificationsEnabled) {
-      const { ipcRenderer } = window.require('electron');
-      ipcRenderer.invoke('show-notification', 
-        'CodeFocus', 
-        `${currentPhase === 'focus' ? 'Foco' : 'Pausa'} finalizada!`
-      );
+      notificationManager.notifyCycleComplete(cycleName);
     }
 
     // Som
     if (settings.soundEnabled) {
-      // Implementar som
+      notificationManager.playFocusCompleteSound();
     }
 
-    // Auto-start próximo ciclo
-    if (currentPhase === 'focus' && settings.autoStartBreaks) {
+    // Auto-iniciar próximo ciclo
+    if (currentPhase === 'focus') {
+      if (settings.autoStartBreaks) {
       startShortBreak();
-    } else if (currentPhase === 'shortBreak' && settings.autoStartPomodoros) {
+      }
+    } else if (settings.autoStartPomodoros) {
       startFocus();
     }
-  }, [currentPhase, cycleName, settings]);
+  }, [currentPhase, cycleName, settings, notificationManager]);
 
   const startFocus = useCallback(() => {
     setTimeLeft(settings.focusTime * 60);

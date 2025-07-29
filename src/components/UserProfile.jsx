@@ -112,13 +112,15 @@ const UserProfile = ({ onEditProfile, onOpenSettings }) => {
               <div className="flex justify-between text-xs">
                 <span className="text-white/60">Login:</span>
                 <span className="text-white/80">
-                  {new Date(user.loginTime).toLocaleDateString('pt-BR')}
+                  {user.loginTime ? new Date(user.loginTime).toLocaleDateString('pt-BR') : 
+                   user.loginDate ? new Date(user.loginDate).toLocaleDateString('pt-BR') : 
+                   'Hoje'}
                 </span>
               </div>
               <div className="flex justify-between text-xs">
                 <span className="text-white/60">ID:</span>
                 <span className="text-white/80 font-mono text-xs">
-                  {user.id.slice(-8)}
+                  {user.id ? user.id.slice(-8) : 'N/A'}
                 </span>
               </div>
             </div>

@@ -32,8 +32,10 @@ const SpotifyIntegration = ({ isOpen, onClose }) => {
   }, []);
 
   useEffect(() => {
-    checkSpotifyConnection();
-  }, [checkSpotifyConnection]);
+    if (isOpen) {
+      checkSpotifyConnection();
+    }
+  }, [isOpen, checkSpotifyConnection]);
 
   const connectSpotify = () => {
     const authUrl = spotifyUtils.getAuthUrl();

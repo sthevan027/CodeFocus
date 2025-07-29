@@ -39,17 +39,23 @@ const RegisterScreen = ({ onSwitchToLogin }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 flex items-center justify-center relative overflow-hidden">
-      {/* Logo de fundo */}
-      <div className="absolute inset-0 flex items-center justify-center opacity-10">
-        <img src="/logo.svg" alt="Logo Background" className="w-96 h-96 object-contain" />
+      {/* Logo Background */}
+      <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+        <img src="/logo-main.png" alt="Logo Background" className="w-96 h-96 object-contain opacity-20" />
+      </div>
+      
+      {/* Logo Principal */}
+      <div className="flex items-center justify-center mb-6">
+        <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-4">
+          <img src="/logo-main.png" alt="CodeFocus Logo" className="w-12 h-12 object-contain" />
+        </div>
+        <div>
+          <h1 className="text-3xl font-bold text-white">CodeFocus</h1>
+          <p className="text-gray-300 text-sm">Produtividade Dev no Ritmo do Código</p>
+        </div>
       </div>
       
       <div className="bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-2xl p-8 w-full max-w-md relative z-10 border border-white/10">
-        <div className="flex flex-col items-center mb-6">
-          <img src="/logo.svg" alt="Logo" className="w-16 h-16 mb-2" />
-          <h1 className="text-3xl font-bold text-white mb-1">CodeFocus</h1>
-          <p className="text-gray-400 text-sm">Foque. Produza. Cresça.</p>
-        </div>
         <h2 className="text-2xl font-bold text-center text-white mb-6">Criar Conta</h2>
         <form onSubmit={handleRegister}>
           <input

@@ -115,7 +115,7 @@ const ProductivityStats = ({ stats, onRefresh }) => {
       </div>
 
       {/* Estatísticas por Tag */}
-      {Object.keys(stats.tags).length > 0 && (
+      {stats.tags && Object.keys(stats.tags).length > 0 && (
         <div className="bg-white/5 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Tempo por Tag</h3>
           <div className="space-y-3">
@@ -142,7 +142,7 @@ const ProductivityStats = ({ stats, onRefresh }) => {
       <div className="bg-white/5 rounded-xl p-6">
         <h3 className="text-white font-semibold mb-4">Atividades Recentes</h3>
         <div className="space-y-3 max-h-64 overflow-y-auto">
-          {stats.recentActivities.slice(0, 10).map((activity, index) => (
+          {stats.recentActivities && stats.recentActivities.slice(0, 10).map((activity, index) => (
             <div key={index} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
               <div className="flex items-center space-x-3">
                 <span className="text-blue-400">
