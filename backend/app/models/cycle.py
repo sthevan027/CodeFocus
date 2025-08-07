@@ -20,4 +20,5 @@ class Cycle(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     
     # Relacionamentos
-    user = relationship("User", back_populates="cycles") 
+    user = relationship("User", back_populates="cycles")
+    tasks = relationship("Task", back_populates="cycle") 

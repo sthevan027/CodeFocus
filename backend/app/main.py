@@ -1,14 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import engine
-from .models import user, cycle, settings, report
-from .api import auth, cycles, settings as settings_api, reports
+from .models import user, cycle, settings, report, task
+from .api import auth, cycles, settings as settings_api, reports, tasks
 
 # Criar tabelas
 user.Base.metadata.create_all(bind=engine)
 cycle.Base.metadata.create_all(bind=engine)
 settings.Base.metadata.create_all(bind=engine)
 report.Base.metadata.create_all(bind=engine)
+task.Base.metadata.create_all(bind=engine)
 
 # Criar aplicação FastAPI
 app = FastAPI(
@@ -33,6 +34,7 @@ app.include_router(auth.router, prefix="/api")
 app.include_router(cycles.router, prefix="/api")
 app.include_router(settings_api.router, prefix="/api")
 app.include_router(reports.router, prefix="/api")
+app.include_router(tasks.router, prefix="/api")
 
 @app.get("/")
 async def root():

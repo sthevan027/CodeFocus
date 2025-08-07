@@ -23,4 +23,5 @@ class User(Base):
     # Relacionamentos
     cycles = relationship("Cycle", back_populates="user", cascade="all, delete-orphan")
     settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan") 
+    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan")
+    tasks = relationship("Task", back_populates="user", cascade="all, delete-orphan") 

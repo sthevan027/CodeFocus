@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # Frontend React
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+    networks:
+      - codefocus-network
+
+  # Backend FastAPI
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///./codefocus.db
+      - SECRET_KEY=${SECRET_KEY:-your-secret-key-here-change-in-production}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET}
+    volumes:
+      - ./backend/codefocus.db:/app/codefocus.db
+    networks:
+      - codefocus-network
+
+networks:
+  codefocus-network:
+    driver: bridge

@@ -1,9 +1,12 @@
 import './App.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Timer from './components/Timer';
 import LoginScreen from './components/LoginScreen';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import Settings from './components/Settings';
+import SettingsPage from './components/SettingsPage';
+import IntegrationsPage from './components/IntegrationsPage';
 import EditProfileModal from './components/EditProfileModal';
 import SpotifyIntegration from './components/SpotifyIntegration';
 import TagManager from './components/TagManager';
@@ -82,40 +85,24 @@ function AppContent() {
     );
   }
 
-  const renderContent = () => {
-    switch (activeView) {
-      case 'timer':
-        return <Timer ref={timerRef} />;
-      case 'dashboard':
-        return <Dashboard onClose={() => setActiveView('timer')} />;
-      case 'tasks':
-        return <TagManager />;
-      case 'spotify':
-        return <SpotifyIntegration isOpen={true} onClose={() => setActiveView('timer')} />;
-      case 'settings':
-        return <Settings isOpen={true} onClose={() => setActiveView('timer')} />;
-      case 'profile':
-        setShowEditProfile(true);
-        setActiveView('timer');
-        return <Timer ref={timerRef} />;
-      default:
-        return <Timer ref={timerRef} />;
-    }
-  };
-
   return (
     <div className="min-h-screen flex">
       {/* Navigation Sidebar */}
       <Navigation 
-        activeView={activeView}
-        onViewChange={setActiveView}
         onLogout={logout}
       />
 
       {/* Main Content Area */}
       <main className="flex-1 ml-20 overflow-hidden">
         <div className="container mx-auto px-6 py-8">
-          {renderContent()}
+          <Routes>
+            <Route path="/" element={<Timer ref={timerRef} />} />
+            <Route path="/dashboard" element={<Dashboard onClose={() => window.location.href = '/'} />} />
+            <Route path="/tasks" element={<TagManager />} />
+            <Route path="/spotify" element={<IntegrationsPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
         </div>
       </main>
 
@@ -150,13 +137,15 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <TimerProvider>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </TimerProvider>
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <TimerProvider>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </TimerProvider>
+      </AuthProvider>
+    </Router>
   );
 }
 

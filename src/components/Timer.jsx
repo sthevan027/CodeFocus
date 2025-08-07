@@ -355,16 +355,7 @@ const Timer = forwardRef((props, ref) => {
             />
           </svg>
 
-          {/* Indicador de progresso circular */}
-          <div 
-            className="absolute w-6 h-6 bg-white rounded-full shadow-lg"
-            style={{
-              top: '50%',
-              left: '50%',
-              transform: `translate(-50%, -50%) rotate(${(progress / 100) * 360 - 90}deg) translateY(-170px)`,
-              transition: 'transform 1s ease-out'
-            }}
-          />
+          {/* Remover o indicador de progresso circular (bolinha branca) */}
 
           {/* Relógio Digital no centro */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
@@ -374,9 +365,14 @@ const Timer = forwardRef((props, ref) => {
             <div className="text-white/60 text-xl mb-2">
               {cycleName && currentPhase === 'focus' ? cycleName : getPhaseName()}
             </div>
-            {/* Progress percentage */}
-            <div className="text-white/40 text-sm">
-              {Math.round(progress)}% completo
+            {/* Progress percentage e tempo restante */}
+            <div className="flex flex-col items-center gap-1">
+              <div className="text-white/40 text-sm">
+                {Math.round(progress)}% completo
+              </div>
+              <div className="text-white/30 text-xs">
+                {timeLeft > 60 ? `${Math.ceil(timeLeft / 60)} minutos restantes` : `${timeLeft} segundos restantes`}
+              </div>
             </div>
           </div>
         </div>
@@ -405,22 +401,7 @@ const Timer = forwardRef((props, ref) => {
       <div className="flex flex-col items-center gap-6 mb-12">
         {!isRunning && !isPaused && (
           <div className="flex flex-col items-center gap-4">
-            {/* Input de nome do ciclo integrado */}
-            {currentPhase === 'focus' && (
-              <input
-                type="text"
-                placeholder="O que você vai focar agora?"
-                value={cycleName}
-                onChange={(e) => setCycleName(e.target.value)}
-                className="px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-80 text-center"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && cycleName.trim()) {
-                    startFocus();
-                  }
-                }}
-              />
-            )}
-            
+            {/* Botões de ação primeiro */}
             <div className="flex gap-4">
               <button
                 onClick={handleStartFocus}
@@ -444,6 +425,34 @@ const Timer = forwardRef((props, ref) => {
                 Pausa Longa
               </button>
             </div>
+
+            {/* Campo de foco abaixo dos botões */}
+            {currentPhase === 'focus' && (
+              <div className="flex flex-col items-center gap-2 mt-4">
+                <input
+                  type="text"
+                  placeholder="Digite aqui sua tarefa ou foco para esta sessão"
+                  value={cycleName}
+                  onChange={(e) => setCycleName(e.target.value)}
+                  onClick={() => {
+                    if (!cycleName) {
+                      // Mostrar notificação orientando o usuário
+                      notificationManager.showNotification(
+                        'Dica: Digite o nome da atividade que você vai focar nesta sessão',
+                        'info'
+                      );
+                    }
+                  }}
+                  className="px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-96 text-center"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && cycleName.trim()) {
+                      startFocus();
+                    }
+                  }}
+                />
+                <p className="text-white/40 text-xs">Pressione Enter para iniciar com esta tarefa</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -484,56 +493,9 @@ const Timer = forwardRef((props, ref) => {
               onClick={() => setShowNoteModal(true)}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
             >
-              📝 Adicionar nota
-            </button>
-            <button
-              onClick={() => setShowGitModal(true)}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
-            >
-              💾 Salvar progresso
+              📝 Adicionar nota rápida
             </button>
           </div>
-        )}
-      </div>
-
-      {/* Cycle Name Input */}
-      {showCycleInput && (
-        <div className="mb-6 w-full max-w-md transition-all duration-300">
-          <input
-            type="text"
-            placeholder="Nome do seu foco atual..."
-            value={cycleName}
-            onChange={(e) => setCycleName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && cycleName.trim()) {
-                setShowCycleInput(false);
-                startFocus();
-              }
-            }}
-            autoFocus
-          />
-        </div>
-      )}
-
-      {/* Botões de Ação Rápida */}
-      <div className="flex justify-center gap-8 mb-8">
-        {!isRunning && !isPaused && (
-          <>
-            <button
-              onClick={startShortBreak}
-              className="text-white/60 hover:text-white transition-colors text-lg"
-            >
-              ☕ Short Break
-            </button>
-            
-            <button
-              onClick={startLongBreak}
-              className="text-white/60 hover:text-white transition-colors text-lg"
-            >
-              🧘 Long Break
-            </button>
-          </>
         )}
       </div>
 
