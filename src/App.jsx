@@ -3,7 +3,7 @@ import Timer from './components/Timer';
 import LoginScreen from './components/LoginScreen';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
-import Settings from './components/Settings';
+import SettingsScreen from './components/SettingsScreen';
 import EditProfileModal from './components/EditProfileModal';
 import SpotifyIntegration from './components/SpotifyIntegration';
 import TagManager from './components/TagManager';
@@ -93,7 +93,12 @@ function AppContent() {
       case 'spotify':
         return <SpotifyIntegration isOpen={true} onClose={() => setActiveView('timer')} />;
       case 'settings':
-        return <Settings isOpen={true} onClose={() => setActiveView('timer')} />;
+        return (
+          <div className="min-h-screen animate-fade-in">
+            <h1 className="text-4xl font-bold text-white mb-6">Configurações</h1>
+            <SettingsScreen isOpen={true} onClose={() => setActiveView('timer')} asPage={true} />
+          </div>
+        );
       case 'profile':
         setShowEditProfile(true);
         setActiveView('timer');

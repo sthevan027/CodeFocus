@@ -26,7 +26,6 @@ const Header = ({ onSettingsClick, onEditProfile, onDashboardClick, onSpotifyCli
           >
             <span className="text-xl">📊</span>
           </button>
-          
           <button
             onClick={onSettingsClick}
             className="p-3 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-200 hover:scale-105 shadow-lg"
@@ -34,7 +33,6 @@ const Header = ({ onSettingsClick, onEditProfile, onDashboardClick, onSpotifyCli
           >
             <span className="text-xl">⚙️</span>
           </button>
-
           <UserProfile 
             onEditProfile={onEditProfile}
             onOpenSettings={onSettingsClick}
