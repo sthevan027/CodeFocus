@@ -1,8 +1,9 @@
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
 import SpotifyQuickControl from './SpotifyQuickControl';
+import { FEATURES } from '../config/features';
 
 const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
@@ -48,6 +49,7 @@ const Timer = forwardRef((props, ref) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
+  const inputRef = useRef(null);
   
   // Salvar estado no localStorage sempre que mudar
   const saveTimerState = (newState) => {
@@ -240,7 +242,8 @@ const Timer = forwardRef((props, ref) => {
 
   const handleStartFocus = () => {
     if (!cycleName.trim()) {
-      setShowCycleInput(true);
+      notificationManager.showToast('Escreva o foco na caixa acima', 'Defina um título curto para este ciclo.', 'warning');
+      if (inputRef.current) inputRef.current.focus();
       return;
     }
     startFocus();
@@ -355,16 +358,7 @@ const Timer = forwardRef((props, ref) => {
             />
           </svg>
 
-          {/* Indicador de progresso circular */}
-          <div 
-            className="absolute w-6 h-6 bg-white rounded-full shadow-lg"
-            style={{
-              top: '50%',
-              left: '50%',
-              transform: `translate(-50%, -50%) rotate(${(progress / 100) * 360 - 90}deg) translateY(-170px)`,
-              transition: 'transform 1s ease-out'
-            }}
-          />
+          {/* Indicador removido conforme solicitação */}
 
           {/* Relógio Digital no centro */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
@@ -412,6 +406,7 @@ const Timer = forwardRef((props, ref) => {
                 placeholder="O que você vai focar agora?"
                 value={cycleName}
                 onChange={(e) => setCycleName(e.target.value)}
+                ref={inputRef}
                 className="px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-80 text-center"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter' && cycleName.trim()) {
@@ -428,20 +423,6 @@ const Timer = forwardRef((props, ref) => {
               >
                 <span className="text-xl">▶</span>
                 Iniciar Foco
-              </button>
-              
-              <button
-                onClick={startShortBreak}
-                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
-              >
-                Pausa Curta
-              </button>
-              
-              <button
-                onClick={startLongBreak}
-                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
-              >
-                Pausa Longa
               </button>
             </div>
           </div>
@@ -496,46 +477,9 @@ const Timer = forwardRef((props, ref) => {
         )}
       </div>
 
-      {/* Cycle Name Input */}
-      {showCycleInput && (
-        <div className="mb-6 w-full max-w-md transition-all duration-300">
-          <input
-            type="text"
-            placeholder="Nome do seu foco atual..."
-            value={cycleName}
-            onChange={(e) => setCycleName(e.target.value)}
-            className="w-full px-4 py-3 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && cycleName.trim()) {
-                setShowCycleInput(false);
-                startFocus();
-              }
-            }}
-            autoFocus
-          />
-        </div>
-      )}
+      {/* Campo único mantido acima. Entrada adicional removida. */}
 
-      {/* Botões de Ação Rápida */}
-      <div className="flex justify-center gap-8 mb-8">
-        {!isRunning && !isPaused && (
-          <>
-            <button
-              onClick={startShortBreak}
-              className="text-white/60 hover:text-white transition-colors text-lg"
-            >
-              ☕ Short Break
-            </button>
-            
-            <button
-              onClick={startLongBreak}
-              className="text-white/60 hover:text-white transition-colors text-lg"
-            >
-              🧘 Long Break
-            </button>
-          </>
-        )}
-      </div>
+      {/* Ações rápidas de pausas removidas para manter apenas o campo e iniciar */}
 
       {/* Git Commit Modal */}
       <GitCommitModal
@@ -640,7 +584,7 @@ const Timer = forwardRef((props, ref) => {
       )}
 
       {/* Spotify Quick Control */}
-      {isRunning && (
+      {isRunning && FEATURES.SPOTIFY_ENABLED && (
         <div className="fixed bottom-8 right-8">
           <SpotifyQuickControl />
         </div>

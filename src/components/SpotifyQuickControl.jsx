@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { FEATURES } from '../config/features';
 
 const SpotifyQuickControl = () => {
   const [isConnected, setIsConnected] = useState(false);
@@ -7,6 +8,7 @@ const SpotifyQuickControl = () => {
   const [showControls, setShowControls] = useState(false);
 
   useEffect(() => {
+    if (!FEATURES.SPOTIFY_ENABLED) return;
     checkSpotifyConnection();
   }, []);
 
@@ -24,6 +26,7 @@ const SpotifyQuickControl = () => {
 
   const fetchCurrentTrack = async () => {
     try {
+      if (!FEATURES.SPOTIFY_ENABLED) return;
       const token = getSpotifyToken();
       if (!token) return;
 
@@ -51,6 +54,7 @@ const SpotifyQuickControl = () => {
 
   const playPause = async () => {
     try {
+      if (!FEATURES.SPOTIFY_ENABLED) return;
       const token = getSpotifyToken();
       if (!token) return;
 
@@ -71,6 +75,7 @@ const SpotifyQuickControl = () => {
 
   const skipNext = async () => {
     try {
+      if (!FEATURES.SPOTIFY_ENABLED) return;
       const token = getSpotifyToken();
       if (!token) return;
 
@@ -87,11 +92,10 @@ const SpotifyQuickControl = () => {
     }
   };
 
-  if (!isConnected) return null;
+  if (!FEATURES.SPOTIFY_ENABLED || !isConnected) return null;
 
   return (
     <div className="relative">
-      {/* Botão de Toggle */}
       <button
         onClick={() => setShowControls(!showControls)}
         className="fixed bottom-4 right-4 bg-green-600 hover:bg-green-700 text-white p-3 rounded-full shadow-lg transition-all duration-200 hover:scale-110 z-40"
@@ -100,10 +104,8 @@ const SpotifyQuickControl = () => {
         🎵
       </button>
 
-      {/* Controles Expandidos */}
       {showControls && (
         <div className="fixed bottom-20 right-4 bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl p-4 shadow-2xl border border-white/10 z-50 min-w-[280px]">
-          {/* Música Atual */}
           {currentTrack && (
             <div className="mb-4">
               <div className="flex items-center space-x-3">
@@ -122,7 +124,6 @@ const SpotifyQuickControl = () => {
             </div>
           )}
 
-          {/* Controles */}
           <div className="flex items-center justify-center space-x-4">
             <button
               onClick={skipNext}
@@ -147,7 +148,6 @@ const SpotifyQuickControl = () => {
             </button>
           </div>
 
-          {/* Status */}
           <div className="mt-3 text-center">
             <span className="text-white/40 text-xs">
               {isPlaying ? '🎵 Tocando' : '⏸️ Pausado'}

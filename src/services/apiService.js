@@ -11,7 +11,6 @@ class ApiService {
     const url = `${this.baseURL}${endpoint}`;
     const config = {
       headers: {
-        'Content-Type': 'application/json',
         ...options.headers,
       },
       ...options,
@@ -20,15 +19,18 @@ class ApiService {
     // Adicionar token de autenticação se existir
     const token = localStorage.getItem('auth-token');
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     try {
       const response = await fetch(url, config);
-      const data = await response.json();
+      const contentType = response.headers.get('content-type') || '';
+      const data = contentType.includes('application/json') ? await response.json() : await response.text();
 
       if (!response.ok) {
-        throw new Error(data.detail || 'Erro na requisição');
+        const message = typeof data === 'string' ? data : data.detail || 'Erro na requisição';
+        throw new Error(message);
       }
 
       return data;
@@ -42,14 +44,18 @@ class ApiService {
   async register(userData) {
     return this.request('/auth/register', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
   }
 
-  async login(credentials) {
+  async login({ email, password }) {
+    // FastAPI OAuth2PasswordRequestForm espera username e password via form-urlencoded
+    const body = new URLSearchParams({ username: email, password });
     const response = await this.request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify(credentials),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
 
     // Salvar token
@@ -64,10 +70,24 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  async oauthCallback(provider, code) {
+    const endpoint = provider === 'google' ? '/auth/google/callback' : '/auth/github/callback';
+    const response = await this.request(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    if (response.access_token) {
+      localStorage.setItem('auth-token', response.access_token);
+    }
+    return response;
+  }
+
   // Usuários
   async updateUser(userData) {
     return this.request('/users/me', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     });
   }
@@ -75,6 +95,7 @@ class ApiService {
   async updateProfile(userId, updates) {
     return this.request(`/users/${userId}`, {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates),
     });
   }

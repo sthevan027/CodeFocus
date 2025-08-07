@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const SettingsScreen = ({ isOpen, onClose }) => {
+const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
   const { user, updateProfile } = useAuth();
   const [settings, setSettings] = useState({
     notifications: true,
@@ -39,7 +39,7 @@ const SettingsScreen = ({ isOpen, onClose }) => {
       });
     }
     
-    onClose();
+    if (!asPage && onClose) onClose();
   };
 
   const handleReset = () => {
@@ -58,11 +58,25 @@ const SettingsScreen = ({ isOpen, onClose }) => {
     });
   };
 
-  if (!isOpen) return null;
+  if (!asPage && !isOpen) return null;
+
+  const Container = ({ children }) => (
+    asPage ? (
+      <div className="rounded-2xl w-full max-w-5xl mx-auto overflow-hidden">
+        {children}
+      </div>
+    ) : (
+      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="w-full max-w-3xl overflow-hidden rounded-2xl">
+          {children}
+        </div>
+      </div>
+    )
+  );
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden">
+    <Container>
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-700">
           <div className="flex items-center space-x-4">
@@ -74,17 +88,18 @@ const SettingsScreen = ({ isOpen, onClose }) => {
               <p className="text-gray-400 text-base">Personalize sua experiência</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors text-xl"
-          >
-            ✕
-          </button>
+          {!asPage && (
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-white transition-colors text-xl"
+            >
+              ✕
+            </button>
+          )}
         </div>
 
         {/* Conteúdo Principal */}
         <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(90vh-120px)]">
-          
           {/* Durações do Timer */}
           <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700">
             <div className="flex items-center space-x-3 mb-4">
@@ -222,7 +237,7 @@ const SettingsScreen = ({ isOpen, onClose }) => {
           </button>
         </div>
       </div>
-    </div>
+    </Container>
   );
 };
 

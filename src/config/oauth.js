@@ -1,27 +1,31 @@
-// Configurações OAuth para Google
-
-// Para usar autenticação real, você precisa:
-// 1. Criar um projeto no Google Cloud Console
-// 2. Substituir os valores abaixo pelos seus
+// Configurações OAuth
 
 export const OAUTH_CONFIG = {
-  // Google OAuth
   GOOGLE: {
-    CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || '263837308438-b6hk644i1a1roi3tsnd0egpt6c32m1qm.apps.googleusercontent.com',
+    CLIENT_ID: process.env.REACT_APP_GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID',
     CLIENT_SECRET: process.env.REACT_APP_GOOGLE_CLIENT_SECRET || 'YOUR_GOOGLE_CLIENT_SECRET',
-    REDIRECT_URI: process.env.REACT_APP_GOOGLE_REDIRECT_URI || 'http://localhost:3000',
+    REDIRECT_URI: process.env.REACT_APP_GOOGLE_REDIRECT_URI || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
     SCOPE: 'email profile'
+  },
+  GITHUB: {
+    CLIENT_ID: process.env.REACT_APP_GITHUB_CLIENT_ID || 'YOUR_GITHUB_CLIENT_ID',
+    CLIENT_SECRET: process.env.REACT_APP_GITHUB_CLIENT_SECRET || 'YOUR_GITHUB_CLIENT_SECRET',
+    REDIRECT_URI: process.env.REACT_APP_GITHUB_REDIRECT_URI || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'),
+    SCOPE: 'read:user user:email'
   }
 };
 
 // URLs de autorização
 export const AUTH_URLS = {
-  GOOGLE: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${OAUTH_CONFIG.GOOGLE.CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.SCOPE)}&response_type=code`
+  GOOGLE: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${OAUTH_CONFIG.GOOGLE.CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_CONFIG.GOOGLE.SCOPE)}&response_type=code&state=google`,
+  GITHUB: `https://github.com/login/oauth/authorize?client_id=${OAUTH_CONFIG.GITHUB.CLIENT_ID}&redirect_uri=${encodeURIComponent(OAUTH_CONFIG.GITHUB.REDIRECT_URI)}&scope=${encodeURIComponent(OAUTH_CONFIG.GITHUB.SCOPE)}&state=github`
 };
 
-// Verificar se as credenciais estão configuradas
 export const isOAuthConfigured = () => {
-  return OAUTH_CONFIG.GOOGLE.CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID';
+  return (
+    OAUTH_CONFIG.GOOGLE.CLIENT_ID !== 'YOUR_GOOGLE_CLIENT_ID' ||
+    OAUTH_CONFIG.GITHUB.CLIENT_ID !== 'YOUR_GITHUB_CLIENT_ID'
+  );
 };
 
 // Instruções para configurar OAuth
