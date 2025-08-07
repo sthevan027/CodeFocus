@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
 import SpotifyQuickControl from './SpotifyQuickControl';
 
-const Timer = () => {
+const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
   
   // Carregar estado inicial do localStorage com dados do usuário
@@ -249,70 +249,211 @@ const Timer = () => {
   // Calcular progresso
   const progress = calculateProgress();
 
+  // Função auxiliar para obter cor baseada na fase
+  const getPhaseColor = () => {
+    switch (currentPhase) {
+      case 'focus':
+        return '#FF6B6B'; // Vermelho/Rosa para foco
+      case 'shortBreak':
+        return '#4ECDC4'; // Turquesa para pausa curta
+      case 'longBreak':
+        return '#45B7D1'; // Azul para pausa longa
+      default:
+        return '#FF6B6B';
+    }
+  };
+
+  // Função auxiliar para obter mensagem de status
+  const getStatusMessage = () => {
+    if (!isRunning && !isPaused && currentPhase === 'focus') {
+      return 'Pronto para focar? 🎯';
+    }
+    if (isRunning) {
+      switch (currentPhase) {
+        case 'focus':
+          return 'Mantenha o foco! 💪';
+        case 'shortBreak':
+          return 'Descanse um pouco 😌';
+        case 'longBreak':
+          return 'Hora de relaxar 🌟';
+        default:
+          return '';
+      }
+    }
+    if (isPaused) {
+      return 'Timer pausado ⏸️';
+    }
+    return '';
+  };
+
+  // Expor métodos para o componente pai
+  useImperativeHandle(ref, () => ({
+    toggleTimer: () => {
+      if (!isRunning && !isPaused) {
+        handleStartFocus();
+      } else if (isRunning) {
+        pauseTimer();
+      } else if (isPaused) {
+        resumeTimer();
+      }
+    },
+    resetTimer: () => {
+      resetTimer();
+    },
+    startFocus: () => {
+      startFocus();
+    },
+    startShortBreak: () => {
+      startShortBreak();
+    },
+    startLongBreak: () => {
+      startLongBreak();
+    }
+  }));
+
   return (
     <div className="flex flex-col items-center min-h-screen">
-      {/* Timer Principal - Design da Imagem */}
-      <div className="relative w-full max-w-2xl mb-12 mt-8">
+      {/* Status Message */}
+      <div className="text-center mb-6 h-8">
+        <p className="text-lg text-white/80 animate-fade-in">
+          {getStatusMessage()}
+        </p>
+      </div>
+
+      {/* Timer Principal - Design Melhorado */}
+      <div className="relative w-full max-w-2xl mb-12">
         {/* Timer Circular com Progress Ring */}
         <div className="relative mx-auto w-96 h-96 mb-8">
-          {/* Progress Ring - Linhas pontilhadas ao redor */}
-          <svg className="absolute inset-0 w-full h-full transform -rotate-90">
-            {/* Círculo base com linhas pontilhadas */}
+          {/* Círculo de fundo */}
+          <svg className="absolute inset-0 w-full h-full">
             <circle
               cx="192"
               cy="192"
-              r="160"
+              r="170"
               fill="none"
-              stroke="rgba(255,255,255,0.3)"
-              strokeWidth="2"
-              strokeDasharray="4 8"
-          />
-
-            {/* Progress ring vermelho/rosa - preenche no sentido horário */}
-            <circle
-              cx="192"
-              cy="192"
-              r="160"
-              fill="none"
-              stroke="#FF6B6B"
-              strokeWidth="4"
-              strokeDasharray={`${2 * Math.PI * 160}`}
-              strokeDashoffset={`${2 * Math.PI * 160 * (1 - progress / 100)}`}
-              strokeLinecap="round"
-              className="transition-all duration-1000 ease-out"
-          />
+              stroke="rgba(255,255,255,0.1)"
+              strokeWidth="20"
+            />
           </svg>
+
+          {/* Progress Ring Animado */}
+          <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+            <circle
+              cx="192"
+              cy="192"
+              r="170"
+              fill="none"
+              stroke={getPhaseColor()}
+              strokeWidth="20"
+              strokeDasharray={`${2 * Math.PI * 170}`}
+              strokeDashoffset={`${2 * Math.PI * 170 * (1 - progress / 100)}`}
+              strokeLinecap="round"
+              className="transition-all duration-1000 ease-out filter drop-shadow-lg"
+              style={{
+                filter: `drop-shadow(0 0 20px ${getPhaseColor()})`
+              }}
+            />
+          </svg>
+
+          {/* Indicador de progresso circular */}
+          <div 
+            className="absolute w-6 h-6 bg-white rounded-full shadow-lg"
+            style={{
+              top: '50%',
+              left: '50%',
+              transform: `translate(-50%, -50%) rotate(${(progress / 100) * 360 - 90}deg) translateY(-170px)`,
+              transition: 'transform 1s ease-out'
+            }}
+          />
 
           {/* Relógio Digital no centro */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-            <div className="text-6xl font-light text-white mb-2 font-mono">
+            <div className="text-7xl font-light text-white mb-4 font-mono tracking-wider">
               {formatTime(timeLeft)}
             </div>
-            <div className="text-white/60 text-lg">
+            <div className="text-white/60 text-xl mb-2">
               {cycleName && currentPhase === 'focus' ? cycleName : getPhaseName()}
+            </div>
+            {/* Progress percentage */}
+            <div className="text-white/40 text-sm">
+              {Math.round(progress)}% completo
+            </div>
+          </div>
         </div>
+
+        {/* Quick Stats */}
+        <div className="flex justify-center gap-8 mb-8">
+          <div className="text-center">
+            <p className="text-white/60 text-sm">Sessões hoje</p>
+            <p className="text-2xl font-semibold text-white">
+              {JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
+                .filter(s => new Date(s.timestamp).toDateString() === new Date().toDateString()).length}
+            </p>
+          </div>
+          <div className="text-center">
+            <p className="text-white/60 text-sm">Tempo total</p>
+            <p className="text-2xl font-semibold text-white">
+              {Math.round(JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
+                .filter(s => new Date(s.timestamp).toDateString() === new Date().toDateString())
+                .reduce((total, s) => total + (s.duration || 0), 0) / 60)}min
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Botões de Controle */}
-      <div className="flex flex-col items-center gap-8 mb-12">
+      {/* Botões de Controle Melhorados */}
+      <div className="flex flex-col items-center gap-6 mb-12">
         {!isRunning && !isPaused && (
-          <button
-            onClick={handleStartFocus}
-            className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
-          >
-            <span className="text-green-400 mr-2">▶</span>
-            Start Focus
-          </button>
+          <div className="flex flex-col items-center gap-4">
+            {/* Input de nome do ciclo integrado */}
+            {currentPhase === 'focus' && (
+              <input
+                type="text"
+                placeholder="O que você vai focar agora?"
+                value={cycleName}
+                onChange={(e) => setCycleName(e.target.value)}
+                className="px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-80 text-center"
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && cycleName.trim()) {
+                    startFocus();
+                  }
+                }}
+              />
+            )}
+            
+            <div className="flex gap-4">
+              <button
+                onClick={handleStartFocus}
+                className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
+              >
+                <span className="text-xl">▶</span>
+                Iniciar Foco
+              </button>
+              
+              <button
+                onClick={startShortBreak}
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+              >
+                Pausa Curta
+              </button>
+              
+              <button
+                onClick={startLongBreak}
+                className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+              >
+                Pausa Longa
+              </button>
+            </div>
+          </div>
         )}
 
         {isRunning && (
           <button
             onClick={pauseTimer}
-            className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
           >
-            ⏸ Pause
+            <span className="text-xl">⏸</span>
+            Pausar
           </button>
         )}
 
@@ -320,16 +461,36 @@ const Timer = () => {
           <div className="flex gap-4">
             <button
               onClick={resumeTimer}
-              className="bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-white/20"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
             >
-              ▶ Resume
+              <span className="text-xl">▶</span>
+              Continuar
             </button>
             
             <button
               onClick={resetTimer}
-              className="bg-red-500/20 backdrop-blur-sm hover:bg-red-500/30 text-red-300 font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-red-300/20"
+              className="bg-red-500/20 backdrop-blur-sm hover:bg-red-500/30 text-red-300 font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-red-300/20 flex items-center gap-2"
             >
-              🔄 Reset
+              <span className="text-xl">↺</span>
+              Reiniciar
+            </button>
+          </div>
+        )}
+
+        {/* Ações Rápidas */}
+        {isRunning && currentPhase === 'focus' && (
+          <div className="flex gap-3 mt-4">
+            <button
+              onClick={() => setShowNoteModal(true)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
+            >
+              📝 Adicionar nota
+            </button>
+            <button
+              onClick={() => setShowGitModal(true)}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
+            >
+              💾 Salvar progresso
             </button>
           </div>
         )}
@@ -479,9 +640,15 @@ const Timer = () => {
       )}
 
       {/* Spotify Quick Control */}
-      <SpotifyQuickControl />
+      {isRunning && (
+        <div className="fixed bottom-8 right-8">
+          <SpotifyQuickControl />
+        </div>
+      )}
     </div>
   );
-};
+});
+
+Timer.displayName = 'Timer';
 
 export default Timer; 
