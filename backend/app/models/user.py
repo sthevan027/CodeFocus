@@ -1,26 +1,23 @@
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, String, DateTime, Enum, Boolean
 from sqlalchemy.sql import func
-from sqlalchemy.orm import relationship
-from ..database import Base
+from app.core.database import Base
+import enum
+
+
+class PlanType(str, enum.Enum):
+    FREE = "free"
+    PRO = "pro"
+    PLUS = "plus"
+
 
 class User(Base):
     __tablename__ = "users"
     
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
-    username = Column(String, unique=True, index=True)
+    supabase_id = Column(String, unique=True, index=True, nullable=False)
     full_name = Column(String)
-    hashed_password = Column(String)
-    avatar_url = Column(String)
-    provider = Column(String, default="email")  # email, google, github, anonymous
-    provider_id = Column(String)  # ID do provedor OAuth
+    plan = Column(Enum(PlanType), default=PlanType.FREE, nullable=False)
     is_active = Column(Boolean, default=True)
-    is_verified = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
-    last_login = Column(DateTime(timezone=True))
-    
-    # Relacionamentos
-    cycles = relationship("Cycle", back_populates="user", cascade="all, delete-orphan")
-    settings = relationship("UserSettings", back_populates="user", uselist=False, cascade="all, delete-orphan")
-    reports = relationship("Report", back_populates="user", cascade="all, delete-orphan") 
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 

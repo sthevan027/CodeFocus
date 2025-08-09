@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Instalar dependências do sistema
 RUN apt-get update && apt-get install -y \
-    postgresql-client \
+    gcc \
     && rm -rf /var/lib/apt/lists/*
 
 # Copiar arquivos de dependências
@@ -18,7 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Criar diretório para relatórios
-RUN mkdir -p reports
+RUN mkdir -p uploads
 
 # Expor porta
 EXPOSE 8000

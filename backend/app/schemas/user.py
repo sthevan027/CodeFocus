@@ -1,46 +1,39 @@
 from pydantic import BaseModel, EmailStr
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+from app.models.user import PlanType
+
 
 class UserBase(BaseModel):
     email: EmailStr
-    username: Optional[str] = None
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
+
 
 class UserCreate(UserBase):
-    password: str
-    provider: str = "email"
-    provider_id: Optional[str] = None
+    supabase_id: str
 
-class UserLogin(BaseModel):
-    email: EmailStr
-    password: str
 
 class UserUpdate(BaseModel):
-    username: Optional[str] = None
     full_name: Optional[str] = None
-    avatar_url: Optional[str] = None
-    is_active: Optional[bool] = None
+    plan: Optional[PlanType] = None
 
-class UserResponse(UserBase):
+
+class User(UserBase):
     id: int
-    provider: str
+    supabase_id: str
+    plan: PlanType
     is_active: bool
-    is_verified: bool
     created_at: datetime
     updated_at: Optional[datetime] = None
-    last_login: Optional[datetime] = None
-
+    
     class Config:
         from_attributes = True
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
-    expires_in: int
-    user: UserResponse
 
-class OAuthCallback(BaseModel):
-    code: str
-    state: Optional[str] = None 
+class UserPlanLimits(BaseModel):
+    plan: PlanType
+    active_dashboards_limit: int
+    total_dashboards_limit: int
+    current_active_dashboards: int
+    current_total_dashboards: int
+    can_create_dashboard: bool 
