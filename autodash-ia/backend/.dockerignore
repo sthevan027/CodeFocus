@@ -1,0 +1,12 @@
+__pycache__/
+.venv/
+venv/
+*.pyc
+*.pyo
+*.pyd
+.build/
+.python_packages/
+.git/
+.gitignore
+.env
+app.db

@@ -1,0 +1,48 @@
+# Node
+node_modules/
+.next/
+out/
+.vercel/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.cache/
+.docusaurus/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+.venv/
+venv/
+.env.local
+
+# Python build
+build/
+dist/
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+
+# OS
+Thumbs.db
+
+# Misc
+*.sqlite3
+*.db
