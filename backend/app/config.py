@@ -1,5 +1,4 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
 import os
 
 class Settings(BaseSettings):
@@ -12,19 +11,18 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
     
-    # Configurações OAuth - Google
-    google_client_id: Optional[str] = None
-    google_client_secret: Optional[str] = None
-    google_redirect_uri: str = "http://localhost:3000/auth/google/callback"
-    
-    # Configurações OAuth - GitHub
-    github_client_id: Optional[str] = None
-    github_client_secret: Optional[str] = None
-    github_redirect_uri: str = "http://localhost:3000/auth/github/callback"
-    
     # Configurações da Aplicação
     backend_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
+    
+    # Configurações de Email
+    mail_username: str = "your-email@gmail.com"
+    mail_password: str = "your-app-password"
+    mail_from: str = "your-email@gmail.com"
+    mail_port: int = 587
+    mail_server: str = "smtp.gmail.com"
+    mail_tls: bool = True
+    mail_ssl: bool = False
     
     class Config:
         env_file = ".env"

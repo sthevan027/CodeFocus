@@ -8,7 +8,6 @@ const Navigation = ({ activeView, onViewChange, onLogout }) => {
     { id: 'timer', label: 'Timer', icon: '⏱️', tooltip: 'Timer Pomodoro' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊', tooltip: 'Estatísticas de Produtividade' },
     { id: 'tasks', label: 'Tarefas', icon: '📝', tooltip: 'Gerenciar Tarefas e Tags' },
-    { id: 'spotify', label: 'Música', icon: '🎵', tooltip: 'Integração Spotify' },
     { id: 'settings', label: 'Configurações', icon: '⚙️', tooltip: 'Preferências do Sistema' },
   ];
 

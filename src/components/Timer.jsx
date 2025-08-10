@@ -2,8 +2,6 @@ import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 're
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
-import SpotifyQuickControl from './SpotifyQuickControl';
-import { FEATURES } from '../config/features';
 
 const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
@@ -583,12 +581,7 @@ const Timer = forwardRef((props, ref) => {
         </div>
       )}
 
-      {/* Spotify Quick Control */}
-      {isRunning && FEATURES.SPOTIFY_ENABLED && (
-        <div className="fixed bottom-8 right-8">
-          <SpotifyQuickControl />
-        </div>
-      )}
+
     </div>
   );
 });

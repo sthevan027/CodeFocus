@@ -1,5 +1,4 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import authService from '../services/authService';
 import apiService from '../services/apiService';
 
 const AuthContext = createContext();
@@ -16,6 +15,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(null);
 
   // Carregar usuário ao inicializar
   useEffect(() => {
@@ -24,8 +24,14 @@ export const AuthProvider = ({ children }) => {
         const saved = localStorage.getItem('codefocus-user');
         if (saved) {
           const parsed = JSON.parse(saved);
-          setUser(parsed);
-          setIsAuthenticated(true);
+          // Verificar se o email foi verificado
+          if (parsed.emailVerified) {
+            setUser(parsed);
+            setIsAuthenticated(true);
+          } else {
+            // Se não foi verificado, mostrar tela de verificação
+            setPendingVerification(parsed);
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
@@ -45,12 +51,24 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  // Gerar código de verificação
+  const generateVerificationCode = (email) => {
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    localStorage.setItem(`verification_${email}`, code);
+    return code;
+  };
+
   // Login com e-mail/senha
   const loginWithEmail = async (email, password) => {
     try {
       setLoading(true);
       const result = await apiService.login({ email, password });
       if (result && result.user) {
+        // Verificar se o email foi verificado
+        if (!result.user.emailVerified) {
+          setPendingVerification(result.user);
+          return { success: false, error: 'Email não verificado', needsVerification: true };
+        }
         setUser(result.user);
         setIsAuthenticated(true);
         saveUser(result.user);
@@ -63,6 +81,13 @@ export const AuthProvider = ({ children }) => {
       const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
       const localUser = users.find(u => u.email === email && u.password === password);
       if (!localUser) return { success: false, error: 'Email ou senha incorretos' };
+      
+      // Verificar se o email foi verificado
+      if (!localUser.emailVerified) {
+        setPendingVerification(localUser);
+        return { success: false, error: 'Email não verificado', needsVerification: true };
+      }
+      
       setUser(localUser);
       setIsAuthenticated(true);
       saveUser(localUser);
@@ -77,10 +102,12 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const result = await apiService.register(userData);
       if (result && result.user) {
-        setUser(result.user);
-        setIsAuthenticated(true);
-        saveUser(result.user);
-        return { success: true, user: result.user };
+        // Gerar código de verificação
+        const verificationCode = generateVerificationCode(userData.email);
+        console.log(`🔐 Código de verificação para ${userData.email}: ${verificationCode}`);
+        
+        setPendingVerification(result.user);
+        return { success: true, user: result.user, needsVerification: true };
       }
       return { success: false, error: 'Resposta inválida do servidor' };
     } catch (error) {
@@ -89,39 +116,81 @@ export const AuthProvider = ({ children }) => {
       if (existingUsers.find(u => u.email === userData.email)) {
         return { success: false, error: 'Email já registrado' };
       }
-      const newUser = { id: `local_${Date.now()}`, name: userData.name, email: userData.email, password: userData.password, provider: 'email', loginTime: new Date().toISOString() };
+      
+      const newUser = { 
+        id: `local_${Date.now()}`, 
+        name: userData.name, 
+        email: userData.email, 
+        password: userData.password, 
+        provider: 'email', 
+        emailVerified: false,
+        loginTime: new Date().toISOString() 
+      };
+      
       existingUsers.push(newUser);
       localStorage.setItem('codefocus-users', JSON.stringify(existingUsers));
-      setUser(newUser);
-      setIsAuthenticated(true);
-      saveUser(newUser);
-      return { success: true, user: newUser };
+      
+      // Gerar código de verificação
+      const verificationCode = generateVerificationCode(userData.email);
+      console.log(`🔐 Código de verificação para ${userData.email}: ${verificationCode}`);
+      
+      setPendingVerification(newUser);
+      return { success: true, user: newUser, needsVerification: true };
     } finally {
       setLoading(false);
     }
   };
 
-  const loginWithGoogle = async () => {
+  // Verificar código de email
+  const verifyEmail = async (email, code) => {
     try {
       setLoading(true);
-      const result = await authService.loginWithGoogle();
-      if (result.success) {
-        setUser(result.user);
+      const savedCode = localStorage.getItem(`verification_${email}`);
+      
+      if (savedCode === code) {
+        // Código correto - marcar email como verificado
+        const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
+        const userIndex = users.findIndex(u => u.email === email);
+        
+        if (userIndex !== -1) {
+          users[userIndex].emailVerified = true;
+          users[userIndex].verifiedAt = new Date().toISOString();
+          localStorage.setItem('codefocus-users', JSON.stringify(users));
+        }
+        
+        // Atualizar usuário atual
+        const verifiedUser = { ...pendingVerification, emailVerified: true, verifiedAt: new Date().toISOString() };
+        setUser(verifiedUser);
         setIsAuthenticated(true);
-        saveUser(result.user);
+        setPendingVerification(null);
+        saveUser(verifiedUser);
+        
+        // Limpar código de verificação
+        localStorage.removeItem(`verification_${email}`);
+        
+        return { success: true, user: verifiedUser };
+      } else {
+        return { success: false, error: 'Código de verificação incorreto' };
       }
-      return result;
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: 'Erro ao verificar código' };
     } finally {
       setLoading(false);
     }
+  };
+
+  // Reenviar código de verificação
+  const resendVerificationCode = (email) => {
+    const newCode = generateVerificationCode(email);
+    console.log(`🔐 Novo código de verificação para ${email}: ${newCode}`);
+    return { success: true };
   };
 
   const logout = async () => {
     try {
       setUser(null);
       setIsAuthenticated(false);
+      setPendingVerification(null);
       localStorage.removeItem('codefocus-user');
       localStorage.removeItem('auth-token');
     } catch (error) {
@@ -162,9 +231,11 @@ export const AuthProvider = ({ children }) => {
     user,
     loading,
     isAuthenticated,
+    pendingVerification,
     loginWithEmail,
     registerUser,
-    loginWithGoogle,
+    verifyEmail,
+    resendVerificationCode,
     logout,
     updateProfile
   };

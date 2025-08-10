@@ -12,10 +12,12 @@ class User(Base):
     full_name = Column(String)
     hashed_password = Column(String)
     avatar_url = Column(String)
-    provider = Column(String, default="email")  # email, google, github, anonymous
-    provider_id = Column(String)  # ID do provedor OAuth
+    provider = Column(String, default="email")  # email
     is_active = Column(Boolean, default=True)
     is_verified = Column(Boolean, default=False)
+    verification_code = Column(String)
+    verification_code_expires = Column(DateTime(timezone=True))
+    verified_at = Column(DateTime(timezone=True))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     last_login = Column(DateTime(timezone=True))

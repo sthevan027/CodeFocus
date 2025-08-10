@@ -11,7 +11,6 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str
     provider: str = "email"
-    provider_id: Optional[str] = None
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -41,6 +40,4 @@ class Token(BaseModel):
     expires_in: int
     user: UserResponse
 
-class OAuthCallback(BaseModel):
-    code: str
-    state: Optional[str] = None 
+ 

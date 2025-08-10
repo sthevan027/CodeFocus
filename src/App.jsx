@@ -1,11 +1,12 @@
 import './App.css';
 import Timer from './components/Timer';
 import LoginScreen from './components/LoginScreen';
+import RegisterScreen from './components/RegisterScreen';
+import EmailVerificationScreen from './components/EmailVerificationScreen';
 import Navigation from './components/Navigation';
 import Dashboard from './components/Dashboard';
 import SettingsScreen from './components/SettingsScreen';
 import EditProfileModal from './components/EditProfileModal';
-import SpotifyIntegration from './components/SpotifyIntegration';
 import TagManager from './components/TagManager';
 import ShortcutsModal from './components/ShortcutsModal';
 import { ToastProvider } from './components/Toast';
@@ -15,10 +16,11 @@ import { useState, useEffect, useRef } from 'react';
 import useKeyboardShortcuts from './hooks/useKeyboardShortcuts';
 
 function AppContent() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, logout, pendingVerification } = useAuth();
   const [activeView, setActiveView] = useState('timer');
   const [showEditProfile, setShowEditProfile] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [authView, setAuthView] = useState('login'); // 'login' ou 'register'
   const timerRef = useRef(null);
 
   // Definir atalhos de teclado
@@ -52,7 +54,6 @@ function AppContent() {
     // Navigation
     'ctrl+d': () => setActiveView('dashboard'),
     'ctrl+s': () => setActiveView('settings'),
-    'ctrl+m': () => setActiveView('spotify'),
     'ctrl+t': () => setActiveView('tasks'),
     // General
     '?': () => setShowShortcuts(true),
@@ -74,10 +75,27 @@ function AppContent() {
     }
   }, [isAuthenticated]);
 
+  // Mostrar tela de verificação se necessário
+  if (pendingVerification) {
+    return (
+      <EmailVerificationScreen 
+        onBack={() => {
+          // Limpar verificação pendente e voltar para registro
+          localStorage.removeItem('codefocus-user');
+          window.location.reload();
+        }} 
+      />
+    );
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen">
-        <LoginScreen />
+        {authView === 'login' ? (
+          <LoginScreen onGoToRegister={() => setAuthView('register')} />
+        ) : (
+          <RegisterScreen onSwitchToLogin={() => setAuthView('login')} />
+        )}
       </div>
     );
   }
@@ -90,8 +108,6 @@ function AppContent() {
         return <Dashboard onClose={() => setActiveView('timer')} />;
       case 'tasks':
         return <TagManager />;
-      case 'spotify':
-        return <SpotifyIntegration isOpen={true} onClose={() => setActiveView('timer')} />;
       case 'settings':
         return (
           <div className="min-h-screen animate-fade-in">

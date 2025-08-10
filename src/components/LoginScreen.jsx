@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ onGoToRegister }) => {
-  const { loginWithEmail, loginWithGoogle, loading } = useAuth();
+  const { loginWithEmail, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,7 +17,11 @@ const LoginScreen = ({ onGoToRegister }) => {
     try {
       const result = await loginWithEmail(email, password);
       if (!result.success) {
-        setError(result.error || 'Erro no login');
+        if (result.needsVerification) {
+          setError('Email não verificado. Verifique seu email primeiro.');
+        } else {
+          setError(result.error || 'Erro no login');
+        }
       }
     } catch (error) {
       setError('Erro ao conectar com o servidor');
@@ -68,34 +72,6 @@ const LoginScreen = ({ onGoToRegister }) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-
-        <button
-          onClick={async () => {
-            setError('');
-            try {
-              const result = await loginWithGoogle();
-              if (!result.success) {
-                setError(result.error || 'Erro no login com Google');
-              }
-            } catch (error) {
-              setError('Erro ao conectar com o Google');
-            }
-          }}
-          className="w-full flex items-center justify-center bg-white text-gray-800 font-bold py-2 rounded mb-2 hover:bg-gray-100 transition disabled:opacity-50"
-          disabled={loading}
-        >
-          <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="w-5 h-5 mr-2" />
-          Continuar com Google
-        </button>
-
-        <button
-          onClick={() => setError('Autenticação com GitHub: em breve')}
-          className="w-full flex items-center justify-center bg-gray-900 text-white font-bold py-2 rounded mb-2 hover:bg-gray-800 transition disabled:opacity-50"
-          disabled={loading}
-        >
-          <img src="https://www.svgrepo.com/show/512317/github-142.svg" alt="GitHub" className="w-5 h-5 mr-2 invert" />
-          Continuar com GitHub
-        </button>
 
         <div className="text-center mt-4">
           <button
