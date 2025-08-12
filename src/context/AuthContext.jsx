@@ -145,6 +145,24 @@ export const AuthProvider = ({ children }) => {
   const verifyEmail = async (email, code) => {
     try {
       setLoading(true);
+      
+      // Tentar verificar via backend primeiro
+      try {
+        const result = await apiService.verifyEmail(email, code);
+        if (result.message) {
+          // Sucesso no backend - atualizar usuário
+          const verifiedUser = { ...pendingVerification, is_verified: true, verified_at: new Date().toISOString() };
+          setUser(verifiedUser);
+          setIsAuthenticated(true);
+          setPendingVerification(null);
+          saveUser(verifiedUser);
+          return { success: true, user: verifiedUser };
+        }
+      } catch (backendError) {
+        console.log('Erro no backend, usando fallback local...', backendError.message);
+      }
+      
+      // Fallback local
       const savedCode = localStorage.getItem(`verification_${email}`);
       
       if (savedCode === code) {
@@ -180,10 +198,26 @@ export const AuthProvider = ({ children }) => {
   };
 
   // Reenviar código de verificação
-  const resendVerificationCode = (email) => {
-    const newCode = generateVerificationCode(email);
-    console.log(`🔐 Novo código de verificação para ${email}: ${newCode}`);
-    return { success: true };
+  const resendVerificationCode = async (email) => {
+    try {
+      // Tentar reenviar via backend primeiro
+      try {
+        const result = await apiService.sendVerificationEmail(email);
+        if (result.message) {
+          console.log('✅ Código reenviado via backend');
+          return { success: true };
+        }
+      } catch (backendError) {
+        console.log('Erro no backend, usando fallback local...', backendError.message);
+      }
+      
+      // Fallback local
+      const newCode = generateVerificationCode(email);
+      console.log(`🔐 Novo código de verificação para ${email}: ${newCode}`);
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro ao reenviar código' };
+    }
   };
 
   const logout = async () => {

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timedelta
 import random
 import string
 from ..database import get_db
@@ -50,7 +50,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # Gerar código de verificação e enviar email
     verification_code = ''.join(random.choices(string.digits, k=6))
     db_user.verification_code = verification_code
-    db_user.verification_code_expires = datetime.utcnow()
+    db_user.verification_code_expires = datetime.utcnow() + timedelta(minutes=5)
     db.commit()
     
     # Enviar email de verificação
@@ -129,7 +129,7 @@ async def send_verification_email(email: str, db: Session = Depends(get_db)):
     
     # Salvar código no banco (ou cache)
     user.verification_code = verification_code
-    user.verification_code_expires = datetime.utcnow()
+    user.verification_code_expires = datetime.utcnow() + timedelta(minutes=5)
     db.commit()
     
     # Enviar email
@@ -180,5 +180,11 @@ async def verify_email(email: str, code: str, db: Session = Depends(get_db)):
     user.verification_code_expires = None
     user.verified_at = datetime.utcnow()
     db.commit()
+    
+    # Enviar email de boas-vindas
+    await email_service.send_welcome_email(
+        email=email,
+        name=user.full_name or user.username
+    )
     
     return {"message": "Email verificado com sucesso"} 

@@ -1,4 +1,4 @@
-# CodeFocus
+# CodeFocus 🚀
 
 Sistema de produtividade para desenvolvedores com foco em gestão de tempo e organização de tarefas.
 
@@ -10,7 +10,8 @@ CodeFocus é uma aplicação web completa que combina técnicas de produtividade
 - 🎵 **Integração Spotify** para música ambiente
 - 📊 **Dashboard completo** de produtividade
 - 🎨 **Interface moderna** com tema escuro
-- 🔐 **Autenticação segura** com Google OAuth
+- 🔐 **Autenticação segura** com verificação por email
+- 📧 **Sistema de email profissional** com Resend
 - 💾 **Persistência local** com localStorage
 
 ## 🚀 Tecnologias
@@ -26,7 +27,7 @@ CodeFocus é uma aplicação web completa que combina técnicas de produtividade
 - **Context API** - Gerenciamento de estado
 - **localStorage** - Persistência local de dados
 
-### Backend (Opcional)
+### Backend
 - **Python 3.11+** - Linguagem do servidor
 - **FastAPI** - Framework web moderno e rápido
 - **SQLAlchemy 2.0** - ORM para banco de dados
@@ -35,6 +36,7 @@ CodeFocus é uma aplicação web completa que combina técnicas de produtividade
 - **bcrypt** - Criptografia de senhas
 - **Alembic** - Migrações de banco de dados
 - **Pydantic** - Validação de dados
+- **Resend** - Sistema de email profissional
 - **httpx** - Cliente HTTP para OAuth
 
 ## 📁 Estrutura do Projeto
@@ -47,19 +49,21 @@ CodeFocus/
 │   ├── services/         # Serviços de API
 │   ├── utils/            # Utilitários (Export, Notifications)
 │   └── config/           # Configurações OAuth
-├── backend/              # Backend FastAPI (Opcional)
+├── backend/              # Backend FastAPI
 │   ├── app/
 │   │   ├── api/         # Endpoints da API
 │   │   ├── auth/        # Autenticação e segurança
 │   │   ├── models/      # Modelos SQLAlchemy
 │   │   ├── schemas/     # Schemas Pydantic
-│   │   ├── services/    # Serviços OAuth
+│   │   ├── services/    # Serviços (email, OAuth)
 │   │   ├── config.py    # Configurações
 │   │   ├── database.py  # Configuração do banco
 │   │   └── main.py      # Aplicação principal
 │   ├── alembic/         # Migrações de banco
 │   ├── requirements.txt # Dependências Python
-│   └── codefocus.db     # Banco SQLite
+│   ├── env.example      # Exemplo de variáveis
+│   ├── setup_env.py     # Script de configuração
+│   └── SETUP.md         # Documentação detalhada
 ├── docs/                # Documentação completa
 ├── public/              # Arquivos estáticos
 └── package.json         # Dependências Node.js
@@ -77,8 +81,13 @@ CodeFocus/
 - hashed_password: VARCHAR
 - full_name: VARCHAR
 - is_active: BOOLEAN
+- is_verified: BOOLEAN (Email verificado)
+- verification_code: VARCHAR (Código de verificação)
+- verification_code_expires: DATETIME (Expiração do código)
+- verified_at: DATETIME (Data de verificação)
 - created_at: DATETIME
 - updated_at: DATETIME
+- last_login: DATETIME
 ```
 
 #### 2. **Cycles** - Ciclos Pomodoro
@@ -133,6 +142,16 @@ CodeFocus/
 
 ### 1. Backend (Python)
 
+#### **Configuração Automática (Recomendado)**
+```bash
+# Navegar para o diretório do backend
+cd backend
+
+# Executar script de configuração
+python setup_env.py
+```
+
+#### **Configuração Manual**
 ```bash
 # Navegar para o diretório do backend
 cd backend
@@ -158,10 +177,10 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 ```bash
 # Instalar dependências Node.js
-npm install
+pnpm install  # ou npm install
 
 # Iniciar servidor de desenvolvimento
-npm start
+pnpm start    # ou npm start
 ```
 
 ### 3. Banco de Dados
@@ -176,6 +195,8 @@ O banco SQLite será criado automaticamente na primeira execução:
 ### Autenticação
 - `POST /api/auth/register` - Cadastrar usuário
 - `POST /api/auth/login` - Fazer login
+- `POST /api/auth/send-verification` - Reenviar código de verificação
+- `POST /api/auth/verify-email` - Verificar código de email
 - `POST /api/auth/oauth/google` - Login com Google
 
 - `GET /api/auth/me` - Dados do usuário atual
@@ -213,6 +234,7 @@ O banco SQLite será criado automaticamente na primeira execução:
 - **🎨 [DOCUMENTACAO_FRONTEND.md](docs/DOCUMENTACAO_FRONTEND.md)** - Frontend e UI
 - **🗄️ [BANCO_DE_DADOS.md](BANCO_DE_DADOS.md)** - Estrutura do banco de dados
 - **🚀 [SETUP_FINAL.md](SETUP_FINAL.md)** - Guia de instalação e execução
+- **📧 [SETUP.md](backend/SETUP.md)** - Configuração do sistema de email
 
 ### Configuração OAuth
 - **🔐 [GOOGLE_OAUTH_SETUP.md](docs/GOOGLE_OAUTH_SETUP.md)** - Configuração Google OAuth
@@ -222,12 +244,16 @@ O banco SQLite será criado automaticamente na primeira execução:
 ## 🔐 Funcionalidades
 
 ### Autenticação
-- ✅ Login com e-mail/senha (localStorage)
-- ✅ Registro de usuários (localStorage)
+- ✅ Login com e-mail/senha
+- ✅ Registro de usuários com verificação obrigatória
+- ✅ Verificação de email via Resend
+- ✅ Códigos de verificação com expiração (5 min)
+- ✅ Email de boas-vindas após verificação
 - ✅ Login com Google OAuth
 - ✅ Backend-first com localStorage fallback
 - ✅ Senhas criptografadas com bcrypt
 - ✅ JWT para sessões seguras (backend)
+- ✅ Templates de email profissionais
 
 ### Timer Pomodoro
 - ✅ Ciclos de trabalho personalizáveis
@@ -258,50 +284,56 @@ O banco SQLite será criado automaticamente na primeira execução:
 
 ## 🚀 Como Usar
 
-### Opção 1: Desenvolvimento Local
+### **Configuração Rápida (Recomendado)**
 
-1. **Inicie o backend (opcional):**
-   ```bash
-   cd backend
-   uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-   ```
-
-2. **Inicie o frontend:**
-   ```bash
-   npm start
-   ```
-
-3. **Acesse a aplicação:**
-   - Frontend: http://localhost:3000
-   - API Docs: http://localhost:8000/docs (se backend estiver rodando)
-
-### Opção 2: Apenas Frontend (Recomendado)
-
-1. **Configure as variáveis de ambiente:**
 ```bash
-# Copie o arquivo de exemplo
+# Execute o configurador automático
+python configure.py
+```
+
+O script irá configurar automaticamente:
+- ✅ Backend com Resend
+- ✅ Frontend com variáveis corretas
+- ✅ Chaves de segurança
+- ✅ URLs da aplicação
+
+### **Configuração Manual**
+
+#### 1. Backend
+```bash
+cd backend
+python setup_env.py  # Configuração automática
+# ou
+cp env.example .env  # Configuração manual
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+#### 2. Frontend
+```bash
 cp env.example .env
-
-# Edite o arquivo .env com suas credenciais
-# REACT_APP_SPOTIFY_CLIENT_ID=seu_client_id_aqui
-# REACT_APP_GOOGLE_CLIENT_ID=seu_google_client_id_aqui
-
+pnpm install
+pnpm start
 ```
 
-2. **Inicie a aplicação:**
-```bash
-npm start
-```
+#### 3. Acesse
+- **Frontend**: http://localhost:3000
+- **Backend API**: http://localhost:8000/docs
 
-3. **Acesse:** http://localhost:3000
+### **Configuração do Email (Resend)**
 
-**Nota:** O frontend funciona independentemente do backend, usando localStorage para persistência de dados.
+1. **Criar conta**: [resend.com](https://resend.com)
+2. **Obter API Key**: Dashboard > API Keys
+3. **Configurar domínio**: 
+   - Desenvolvimento: `onboarding@resend.dev`
+   - Produção: `noreply@seudominio.com`
 
-4. **Teste as funcionalidades:**
-   - Cadastre uma conta nova
-   - Configure suas preferências de timer
-   - Inicie um ciclo Pomodoro
-   - Visualize relatórios de produtividade
+### **Teste o Sistema**
+
+1. **Registrar usuário** na aplicação
+2. **Verificar email** recebido
+3. **Inserir código** de verificação
+4. **Receber boas-vindas** e acessar sistema
 
 ## 🔧 Desenvolvimento
 
@@ -318,20 +350,39 @@ npm start
 - **localStorage:** Persistência local de dados
 
 ### Variáveis de Ambiente
+
+#### **Frontend (.env)**
 ```bash
-# Frontend (.env)
 REACT_APP_API_URL=http://localhost:8000
 REACT_APP_GOOGLE_CLIENT_ID=your-google-client-id
 REACT_APP_SPOTIFY_CLIENT_ID=your-spotify-client-id
+```
 
-# Backend (.env) - Opcional
+#### **Backend (.env)**
+```bash
+# Banco de Dados
 DATABASE_URL=sqlite:///./codefocus.db
+
+# Segurança
 SECRET_KEY=your-secret-key
-GOOGLE_CLIENT_ID=your-google-client-id
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# URLs
+BACKEND_URL=http://localhost:8000
+FRONTEND_URL=http://localhost:3000
+
+# Email (Resend)
+RESEND_API_KEY=re_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+MAIL_FROM=noreply@yourdomain.com
 ```
 
 ## 📝 Próximos Passos
 
+- [x] ✅ Sistema de autenticação com verificação por email
+- [x] ✅ Integração com Resend para envio de emails
+- [x] ✅ Templates de email profissionais
+- [x] ✅ Scripts de configuração automática
 - [ ] Implementar integração Git completa
 - [ ] Adicionar sistema de notificações web
 - [ ] Implementar exportação de relatórios (PDF/Excel)
@@ -348,6 +399,36 @@ GOOGLE_CLIENT_ID=your-google-client-id
 4. Push para a branch
 5. Abra um Pull Request
 
+## 📧 Sistema de Email
+
+### **Resend Integration**
+- ✅ **Verificação obrigatória** de email no registro
+- ✅ **Templates HTML responsivos** e profissionais
+- ✅ **Códigos de verificação** com expiração (5 minutos)
+- ✅ **Email de boas-vindas** após verificação
+- ✅ **Reenvio automático** de códigos
+- ✅ **Logs detalhados** de envio
+
+### **Templates Incluídos**
+- **Email de Verificação**: Design moderno com código destacado
+- **Email de Boas-vindas**: Mensagem personalizada com funcionalidades
+
+### **Configuração**
+```bash
+# 1. Criar conta em resend.com
+# 2. Obter API Key no dashboard
+# 3. Configurar domínio (desenvolvimento: onboarding@resend.dev)
+# 4. Adicionar variáveis no .env
+```
+
 ## 📄 Licença
 
 Este projeto está sob a licença MIT.
+
+---
+
+<div align="center">
+  <p>Feito com ❤️ para desenvolvedores</p>
+  <p><strong>CodeFocus</strong> - Produtividade Dev no Ritmo do Código</p>
+  <p>⚡ Configure em segundos • 📧 Emails profissionais • 🔐 Autenticação segura</p>
+</div>

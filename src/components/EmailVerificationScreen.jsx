@@ -43,12 +43,16 @@ const EmailVerificationScreen = ({ onBack }) => {
     }
   };
 
-  const handleResendCode = () => {
-    resendVerificationCode(pendingVerification.email);
-    setTimeLeft(300);
-    setCanResend(false);
-    setVerificationCode('');
-    setError('');
+  const handleResendCode = async () => {
+    const result = await resendVerificationCode(pendingVerification.email);
+    if (result.success) {
+      setTimeLeft(300);
+      setCanResend(false);
+      setVerificationCode('');
+      setError('');
+    } else {
+      setError(result.error || 'Erro ao reenviar código');
+    }
   };
 
   if (!pendingVerification) {

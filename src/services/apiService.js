@@ -70,6 +70,22 @@ class ApiService {
     return this.request('/auth/me');
   }
 
+  async sendVerificationEmail(email) {
+    return this.request('/auth/send-verification', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+  }
+
+  async verifyEmail(email, code) {
+    return this.request('/auth/verify-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code }),
+    });
+  }
+
   async oauthCallback(provider, code) {
     const endpoint = provider === 'google' ? '/auth/google/callback' : '/auth/github/callback';
     const response = await this.request(endpoint, {
