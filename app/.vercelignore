@@ -1,0 +1,23 @@
+# Dependencies
+node_modules
+
+# Local env files
+.env*.local
+.env
+
+# Development files
+*.log
+.DS_Store
+
+# Documentation
+*.md
+!README.md
+
+# Supabase schema (não precisa no deploy)
+supabase/
+
+# Config files (já incluídos no build)
+next.config.js
+tailwind.config.js
+postcss.config.js
+
