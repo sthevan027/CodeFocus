@@ -3,6 +3,8 @@ import { hashPassword, createToken } from '../../../lib/auth'
 import { registerSchema } from '../../../lib/validations'
 import { checkRateLimit, getClientIp } from '../../../lib/rateLimit'
 import { getRequestId, log } from '../../../lib/logger'
+import { serializeCookie } from '../../../lib/cookies'
+import { AUTH_COOKIE_NAME } from '../../../lib/auth'
 
 export default async function handler(req, res) {
   const requestId = getRequestId(req)
@@ -79,6 +81,18 @@ export default async function handler(req, res) {
 
     // Gerar token
     const token = createToken({ userId: user.id })
+
+    // Cookie httpOnly (preferido em produção)
+    res.setHeader(
+      'Set-Cookie',
+      serializeCookie(AUTH_COOKIE_NAME, token, {
+        httpOnly: true,
+        sameSite: 'Lax',
+        secure: process.env.NODE_ENV === 'production',
+        path: '/',
+        maxAge: 30 * 60
+      })
+    )
 
     return res.status(201).json({
       access_token: token,

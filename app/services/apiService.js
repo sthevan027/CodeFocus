@@ -16,7 +16,9 @@ class ApiService {
       ...options,
     }
 
-    // Adicionar token de autenticação se existir
+    // Preferir cookie httpOnly (credentials include).
+    // Manter compatibilidade com Bearer via localStorage, se existir.
+    config.credentials = 'include'
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('auth-token')
       if (token) {
@@ -73,6 +75,12 @@ class ApiService {
     return response
   }
 
+  async logout() {
+    return this.request('/auth/logout', {
+      method: 'POST',
+    })
+  }
+
   async getCurrentUser() {
     return this.request('/auth/me')
   }
@@ -105,7 +113,7 @@ class ApiService {
   }
 
   // Logout
-  logout() {
+  clearLocalSession() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth-token')
       localStorage.removeItem('codefocus-user')

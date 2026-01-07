@@ -19,7 +19,17 @@ export const loginSchema = z.object({
 // Validação de ciclo
 export const cycleSchema = z.object({
   name: z.string().min(1, 'Nome é obrigatório'),
-  duration: z.number().int().positive('Duração deve ser positiva'),
+  // Backend padroniza duration em MINUTOS.
+  // Aceita número ou string; se vier em segundos (ex.: 1500), normaliza para minutos.
+  duration: z.preprocess((v) => {
+    const n = typeof v === 'string' ? Number(v) : v
+    if (typeof n !== 'number' || Number.isNaN(n)) return n
+    if (n > 300) {
+      // heurística: acima de 300 é muito provável estar em segundos
+      return Math.round(n / 60)
+    }
+    return n
+  }, z.number().int().positive('Duração deve ser positiva')),
   phase: z.enum(['focus', 'shortBreak', 'longBreak'], {
     errorMap: () => ({ message: 'Fase inválida' })
   }),
@@ -42,6 +52,7 @@ export const settingsUpdateSchema = z.object({
   focus_time: z.number().int().positive().optional(),
   short_break_time: z.number().int().positive().optional(),
   long_break_time: z.number().int().positive().optional(),
+  cycles_before_long_break: z.number().int().min(1).max(20).optional(),
   auto_start_breaks: z.boolean().optional(),
   auto_start_pomodoros: z.boolean().optional(),
   sound_enabled: z.boolean().optional(),

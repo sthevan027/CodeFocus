@@ -1,8 +1,10 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { parseCookies } from './cookies'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30m'
+export const AUTH_COOKIE_NAME = 'codefocus_token'
 
 /**
  * Gera hash da senha
@@ -44,7 +46,9 @@ export function verifyToken(token) {
 export function getTokenFromRequest(req) {
   const authHeader = req.headers.authorization
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return null
+    // Fallback para cookie httpOnly
+    const cookies = parseCookies(req.headers.cookie)
+    return cookies[AUTH_COOKIE_NAME] || null
   }
   return authHeader.substring(7)
 }

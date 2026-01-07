@@ -52,42 +52,32 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
       try {
         const saved = localStorage.getItem('codefocus-user');
-        const token = localStorage.getItem('auth-token');
-        
-        // Se tiver token, tentar buscar usuário do backend
-        if (token) {
-          try {
-            const currentUser = await apiService.getCurrentUser();
-            const normalized = normalizeUser(currentUser);
-            if (normalized && normalized.is_verified) {
-              setUser(normalized);
-              setIsAuthenticated(true);
-              saveUser(normalized);
-              await syncSettingsFromBackend();
-            } else if (normalized && !normalized.is_verified) {
-              setPendingVerification(normalized);
-            }
-          } catch (error) {
-            if (OFFLINE_MODE_ENABLED) {
-              console.log('Modo offline: usando localStorage (falha ao buscar usuário do backend).', error);
-              // Fallback para localStorage
-              if (saved) {
-                const parsed = normalizeUser(JSON.parse(saved));
-                if (parsed?.emailVerified || parsed?.is_verified) {
-                  setUser(parsed);
-                  setIsAuthenticated(true);
-                } else {
-                  setPendingVerification(parsed);
-                }
-              }
-            } else {
-              // Sem fallback silencioso em produção
-              console.warn('Falha ao buscar usuário do backend. Limpando sessão local.', error);
-              localStorage.removeItem('auth-token');
-              localStorage.removeItem('codefocus-user');
-            }
+
+        // Tentar backend primeiro (cookie httpOnly OU Bearer via localStorage)
+        try {
+          const currentUser = await apiService.getCurrentUser();
+          const normalized = normalizeUser(currentUser);
+          if (normalized && normalized.is_verified) {
+            setUser(normalized);
+            setIsAuthenticated(true);
+            saveUser(normalized);
+            await syncSettingsFromBackend();
+          } else if (normalized && !normalized.is_verified) {
+            setPendingVerification(normalized);
           }
-        } else if (saved && OFFLINE_MODE_ENABLED) {
+          return;
+        } catch (error) {
+          if (!OFFLINE_MODE_ENABLED) {
+            console.warn('Falha ao buscar usuário do backend. Limpando sessão local.', error);
+            localStorage.removeItem('auth-token');
+            localStorage.removeItem('codefocus-user');
+            return;
+          }
+          // Se offline estiver ativo, cai para o storage
+          console.log('Modo offline: usando localStorage (falha ao buscar usuário do backend).', error);
+        }
+
+        if (saved && OFFLINE_MODE_ENABLED) {
           const parsed = normalizeUser(JSON.parse(saved));
           // Verificar se o email foi verificado (suporta ambos os formatos)
           if (parsed?.emailVerified || parsed?.is_verified) {
@@ -325,6 +315,11 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
+      try {
+        await apiService.logout();
+      } catch (e) {
+        // ok
+      }
       setUser(null);
       setIsAuthenticated(false);
       setPendingVerification(null);

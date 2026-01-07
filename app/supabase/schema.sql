@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS user_settings (
     focus_time INTEGER DEFAULT 25,
     short_break_time INTEGER DEFAULT 5,
     long_break_time INTEGER DEFAULT 15,
+    cycles_before_long_break INTEGER DEFAULT 4,
     
     -- Configurações de Comportamento
     auto_start_breaks BOOLEAN DEFAULT false,

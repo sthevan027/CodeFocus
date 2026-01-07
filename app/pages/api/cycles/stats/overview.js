@@ -54,8 +54,11 @@ export default async function handler(req, res) {
       total_cycles: totalCycles,
       completed_cycles: completedCycles,
       interrupted_cycles: interruptedCycles,
+      // duration é em MINUTOS (manter compat com clientes antigos)
       total_focus_time: totalFocusTime,
       total_break_time: totalBreakTime,
+      total_focus_minutes: totalFocusTime,
+      total_break_minutes: totalBreakTime,
       average_cycle_duration: averageDuration,
       productivity_score: productivityScore
     })
