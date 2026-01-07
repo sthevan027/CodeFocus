@@ -1,7 +1,9 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiService from '../services/apiService';
+import { saveSettings, normalizeSettings } from '../utils/settingsUtils';
 
 const AuthContext = createContext();
+const OFFLINE_MODE_ENABLED = process.env.NEXT_PUBLIC_OFFLINE_MODE === 'true';
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
@@ -17,6 +19,34 @@ export const AuthProvider = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pendingVerification, setPendingVerification] = useState(null);
 
+  const normalizeUser = (rawUser) => {
+    if (!rawUser) return null;
+    const name = rawUser.name ?? rawUser.full_name ?? rawUser.username ?? '';
+    const avatar = rawUser.avatar ?? rawUser.avatar_url ?? '';
+    const is_verified = rawUser.is_verified ?? rawUser.emailVerified ?? false;
+
+    return {
+      ...rawUser,
+      name,
+      full_name: rawUser.full_name ?? rawUser.name ?? name,
+      avatar,
+      avatar_url: rawUser.avatar_url ?? rawUser.avatar ?? avatar,
+      is_verified,
+    };
+  };
+
+  const syncSettingsFromBackend = async () => {
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+      if (!token) return;
+      const remote = await apiService.getSettings();
+      const normalized = normalizeSettings(remote);
+      saveSettings(normalized);
+    } catch (e) {
+      // manter local
+    }
+  };
+
   // Carregar usuário ao inicializar
   useEffect(() => {
     const loadUser = async () => {
@@ -28,36 +58,48 @@ export const AuthProvider = ({ children }) => {
         if (token) {
           try {
             const currentUser = await apiService.getCurrentUser();
-            if (currentUser && currentUser.is_verified) {
-              setUser(currentUser);
+            const normalized = normalizeUser(currentUser);
+            if (normalized && normalized.is_verified) {
+              setUser(normalized);
               setIsAuthenticated(true);
-              saveUser(currentUser);
-            } else if (currentUser && !currentUser.is_verified) {
-              setPendingVerification(currentUser);
+              saveUser(normalized);
+              await syncSettingsFromBackend();
+            } else if (normalized && !normalized.is_verified) {
+              setPendingVerification(normalized);
             }
           } catch (error) {
-            console.log('Erro ao buscar usuário do backend, usando localStorage...', error);
-            // Fallback para localStorage
-            if (saved) {
-              const parsed = JSON.parse(saved);
-              if (parsed.emailVerified || parsed.is_verified) {
-                setUser(parsed);
-                setIsAuthenticated(true);
-              } else {
-                setPendingVerification(parsed);
+            if (OFFLINE_MODE_ENABLED) {
+              console.log('Modo offline: usando localStorage (falha ao buscar usuário do backend).', error);
+              // Fallback para localStorage
+              if (saved) {
+                const parsed = normalizeUser(JSON.parse(saved));
+                if (parsed?.emailVerified || parsed?.is_verified) {
+                  setUser(parsed);
+                  setIsAuthenticated(true);
+                } else {
+                  setPendingVerification(parsed);
+                }
               }
+            } else {
+              // Sem fallback silencioso em produção
+              console.warn('Falha ao buscar usuário do backend. Limpando sessão local.', error);
+              localStorage.removeItem('auth-token');
+              localStorage.removeItem('codefocus-user');
             }
           }
-        } else if (saved) {
-          const parsed = JSON.parse(saved);
+        } else if (saved && OFFLINE_MODE_ENABLED) {
+          const parsed = normalizeUser(JSON.parse(saved));
           // Verificar se o email foi verificado (suporta ambos os formatos)
-          if (parsed.emailVerified || parsed.is_verified) {
+          if (parsed?.emailVerified || parsed?.is_verified) {
             setUser(parsed);
             setIsAuthenticated(true);
           } else {
             // Se não foi verificado, mostrar tela de verificação
             setPendingVerification(parsed);
           }
+        } else if (saved && !OFFLINE_MODE_ENABLED) {
+          // Evitar "sessão fantasma" em produção sem token válido
+          localStorage.removeItem('codefocus-user');
         }
       } catch (error) {
         console.error('Erro ao carregar usuário:', error);
@@ -90,19 +132,24 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       const result = await apiService.login({ email, password });
       if (result && result.user) {
+        const normalized = normalizeUser(result.user);
         // Verificar se o email foi verificado (backend usa is_verified)
-        if (!result.user.is_verified) {
-          setPendingVerification(result.user);
+        if (!normalized.is_verified) {
+          setPendingVerification(normalized);
           return { success: false, error: 'Email não verificado', needsVerification: true };
         }
-        setUser(result.user);
+        setUser(normalized);
         setIsAuthenticated(true);
-        saveUser(result.user);
-        return { success: true, user: result.user };
+        saveUser(normalized);
+        await syncSettingsFromBackend();
+        return { success: true, user: normalized };
       }
       return { success: false, error: 'Resposta inválida do servidor' };
     } catch (error) {
-      console.log('Erro no login backend, usando fallback local...', error.message);
+      if (!OFFLINE_MODE_ENABLED) {
+        return { success: false, error: error.message || 'Erro ao fazer login' };
+      }
+      console.log('Modo offline: erro no login backend, usando fallback local...', error.message);
       // Fallback local simples
       const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
       const localUser = users.find(u => u.email === email && u.password === password);
@@ -110,14 +157,15 @@ export const AuthProvider = ({ children }) => {
       
       // Verificar se o email foi verificado
       if (!localUser.emailVerified) {
-        setPendingVerification(localUser);
+        setPendingVerification(normalizeUser(localUser));
         return { success: false, error: 'Email não verificado', needsVerification: true };
       }
       
-      setUser(localUser);
+      const normalized = normalizeUser(localUser);
+      setUser(normalized);
       setIsAuthenticated(true);
-      saveUser(localUser);
-      return { success: true, user: localUser };
+      saveUser(normalized);
+      return { success: true, user: normalized };
     } finally {
       setLoading(false);
     }
@@ -136,11 +184,15 @@ export const AuthProvider = ({ children }) => {
       
       const result = await apiService.register(backendData);
       if (result && result.user) {
-        setPendingVerification(result.user);
-        return { success: true, user: result.user, needsVerification: true };
+        const normalized = normalizeUser(result.user);
+        setPendingVerification(normalized);
+        return { success: true, user: normalized, needsVerification: true };
       }
       return { success: false, error: 'Resposta inválida do servidor' };
     } catch (error) {
+      if (!OFFLINE_MODE_ENABLED) {
+        return { success: false, error: error.message || 'Erro ao registrar usuário' };
+      }
       // Fallback local
       const existingUsers = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
       if (existingUsers.find(u => u.email === userData.email)) {
@@ -164,8 +216,9 @@ export const AuthProvider = ({ children }) => {
       const verificationCode = generateVerificationCode(userData.email);
       console.log(`🔐 Código de verificação para ${userData.email}: ${verificationCode}`);
       
-      setPendingVerification(newUser);
-      return { success: true, user: newUser, needsVerification: true };
+      const normalized = normalizeUser(newUser);
+      setPendingVerification(normalized);
+      return { success: true, user: normalized, needsVerification: true };
     } finally {
       setLoading(false);
     }
@@ -184,17 +237,18 @@ export const AuthProvider = ({ children }) => {
           try {
             const currentUser = await apiService.getCurrentUser();
             if (currentUser) {
-              setUser(currentUser);
+              const normalized = normalizeUser(currentUser);
+              setUser(normalized);
               setIsAuthenticated(true);
               setPendingVerification(null);
-              saveUser(currentUser);
-              return { success: true, user: currentUser };
+              saveUser(normalized);
+              return { success: true, user: normalized };
             }
           } catch (err) {
             console.log('Erro ao buscar usuário após verificação:', err);
           }
           // Fallback: atualizar pendingVerification
-          const verifiedUser = { ...pendingVerification, is_verified: true, verified_at: new Date().toISOString() };
+          const verifiedUser = normalizeUser({ ...pendingVerification, is_verified: true, verified_at: new Date().toISOString() });
           setUser(verifiedUser);
           setIsAuthenticated(true);
           setPendingVerification(null);
@@ -202,7 +256,10 @@ export const AuthProvider = ({ children }) => {
           return { success: true, user: verifiedUser };
         }
       } catch (backendError) {
-        console.log('Erro no backend, usando fallback local...', backendError.message);
+        if (!OFFLINE_MODE_ENABLED) {
+          return { success: false, error: backendError.message || 'Erro ao verificar email' };
+        }
+        console.log('Modo offline: erro no backend, usando fallback local...', backendError.message);
       }
       
       // Fallback local
@@ -220,7 +277,7 @@ export const AuthProvider = ({ children }) => {
         }
         
         // Atualizar usuário atual
-        const verifiedUser = { ...pendingVerification, emailVerified: true, verifiedAt: new Date().toISOString() };
+        const verifiedUser = normalizeUser({ ...pendingVerification, emailVerified: true, verifiedAt: new Date().toISOString() });
         setUser(verifiedUser);
         setIsAuthenticated(true);
         setPendingVerification(null);
@@ -251,7 +308,10 @@ export const AuthProvider = ({ children }) => {
           return { success: true };
         }
       } catch (backendError) {
-        console.log('Erro no backend, usando fallback local...', backendError.message);
+        if (!OFFLINE_MODE_ENABLED) {
+          return { success: false, error: backendError.message || 'Erro ao reenviar código' };
+        }
+        console.log('Modo offline: erro no backend, usando fallback local...', backendError.message);
       }
       
       // Fallback local
@@ -279,13 +339,21 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       if (!user) return { success: false, error: 'Sem usuário' };
-      const result = await apiService.updateProfile(user.id, updates);
-      if (result.success) {
-        const updated = { ...user, ...result.user };
+      // Backend trabalha em snake_case; frontend usa name/avatar
+      const payload = {
+        ...(updates.name !== undefined ? { full_name: updates.name } : {}),
+        ...(updates.email !== undefined ? { email: updates.email } : {}),
+        ...(updates.avatar !== undefined ? { avatar_url: updates.avatar } : {}),
+      };
+
+      const result = await apiService.updateUser(payload);
+      if (result && result.user) {
+        const updated = normalizeUser({ ...user, ...result.user });
         setUser(updated);
         saveUser(updated);
-        return result;
+        return { success: true, user: updated };
       }
+
       // fallback local
       const users = JSON.parse(localStorage.getItem('codefocus-users') || '[]');
       const idx = users.findIndex(u => u.id === user.id);
@@ -293,7 +361,7 @@ export const AuthProvider = ({ children }) => {
         users[idx] = { ...users[idx], ...updates };
         localStorage.setItem('codefocus-users', JSON.stringify(users));
       }
-      const updatedLocal = { ...user, ...updates };
+      const updatedLocal = normalizeUser({ ...user, ...updates });
       setUser(updatedLocal);
       saveUser(updatedLocal);
       return { success: true, user: updatedLocal };

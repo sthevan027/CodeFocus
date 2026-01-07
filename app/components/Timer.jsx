@@ -1,10 +1,13 @@
-import { useState, useEffect, forwardRef, useImperativeHandle, useRef } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
+import { loadSettings } from '../utils/settingsUtils';
 
 const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
+  const [settings, setSettings] = useState(loadSettings());
+  const [pendingAutoStartPhase, setPendingAutoStartPhase] = useState(null); // 'shortBreak' | 'longBreak' | 'focus'
   
   // Carregar estado inicial do localStorage com dados do usuário
   const loadTimerState = () => {
@@ -14,7 +17,7 @@ const Timer = forwardRef((props, ref) => {
       if (saved) {
         const state = JSON.parse(saved);
         return {
-          timeLeft: state.timeLeft || 25 * 60,
+          timeLeft: state.timeLeft || loadSettings().focus_time * 60,
           isRunning: false, // Sempre parar ao recarregar
           isPaused: state.isPaused || false,
           currentPhase: state.currentPhase || 'focus',
@@ -26,7 +29,7 @@ const Timer = forwardRef((props, ref) => {
       console.error('Erro ao carregar estado do timer:', error);
     }
     return {
-      timeLeft: 25 * 60,
+      timeLeft: loadSettings().focus_time * 60,
       isRunning: false,
       isPaused: false,
       currentPhase: 'focus',
@@ -47,7 +50,50 @@ const Timer = forwardRef((props, ref) => {
   const [selectedTags, setSelectedTags] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
+  const [availableTags, setAvailableTags] = useState([]);
   const inputRef = useRef(null);
+
+  // Atualizar settings quando localStorage mudar (SettingsScreen)
+  useEffect(() => {
+    const onStorage = (e) => {
+      if (e.key === 'codefocus-settings') {
+        setSettings(loadSettings());
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  // Carregar tags do usuário (para usar na nota/sessão)
+  useEffect(() => {
+    try {
+      const key = user ? `codefocus-tags-${user.id}` : 'codefocus-tags';
+      const saved = JSON.parse(localStorage.getItem(key) || '[]');
+      setAvailableTags(Array.isArray(saved) ? saved : []);
+    } catch {
+      setAvailableTags([]);
+    }
+  }, [user]);
+
+  const getFocusCountKey = useCallback(() => {
+    return user ? `codefocus-focus-count-${user.id}` : 'codefocus-focus-count';
+  }, [user]);
+
+  const getFocusCount = useCallback(() => {
+    try {
+      const raw = localStorage.getItem(getFocusCountKey());
+      const n = raw ? parseInt(raw, 10) : 0;
+      return Number.isFinite(n) ? n : 0;
+    } catch {
+      return 0;
+    }
+  }, [getFocusCountKey]);
+
+  const setFocusCount = useCallback((n) => {
+    try {
+      localStorage.setItem(getFocusCountKey(), String(n));
+    } catch {}
+  }, [getFocusCountKey]);
   
   // Salvar estado no localStorage sempre que mudar
   const saveTimerState = (newState) => {
@@ -130,24 +176,45 @@ const Timer = forwardRef((props, ref) => {
       
       // Salvar sessão
       saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+
+      // Contabilizar ciclos de foco para decidir pausa curta/longa
+      let nextBreakPhase = 'shortBreak';
+      if (currentPhase === 'focus') {
+        const nextCount = getFocusCount() + 1;
+        setFocusCount(nextCount);
+        const every = settings.cycles_before_long_break || 4;
+        if (every > 0 && nextCount % every === 0) {
+          nextBreakPhase = 'longBreak';
+        }
+      }
       
       // Mostrar modal de nota se for sessão de foco
       if (currentPhase === 'focus') {
         setShowNoteModal(true);
+        if (settings.auto_start_breaks) {
+          setPendingAutoStartPhase(nextBreakPhase);
+        }
       }
       
       // Limpar dados da sessão
       setSelectedTags([]);
-      setSessionNote('');
+      // nota é preenchida no modal; limpar quando fechar/salvar
       
       // Mostrar modal Git se for um ciclo de foco
       if (currentPhase === 'focus' && cycleName) {
         setShowGitModal(true);
       }
+
+      // Auto-start (pausas/pomodoros) sem modal de nota
+      if (currentPhase !== 'focus') {
+        if (settings.auto_start_pomodoros) {
+          startFocus();
+        }
+      }
     }
 
     return () => clearInterval(interval);
-  }, [isRunning, timeLeft]);
+  }, [isRunning, timeLeft, currentPhase, cycleName, selectedTags, sessionNote, getFocusCount, setFocusCount, settings]);
 
   // Obter duração da fase atual
   const getPhaseDuration = (phase) => {
@@ -155,13 +222,13 @@ const Timer = forwardRef((props, ref) => {
       case 'focus':
         return customFocusMinutes && !isNaN(Number(customFocusMinutes)) && Number(customFocusMinutes) > 0
           ? Number(customFocusMinutes) * 60
-          : 25 * 60;
+          : (settings.focus_time || 25) * 60;
       case 'shortBreak':
-        return 5 * 60;
+        return (settings.short_break_time || 5) * 60;
       case 'longBreak':
-        return 15 * 60;
+        return (settings.long_break_time || 15) * 60;
       default:
-        return 25 * 60;
+        return (settings.focus_time || 25) * 60;
     }
   };
 
@@ -195,7 +262,7 @@ const Timer = forwardRef((props, ref) => {
   const startFocus = () => {
     const minutes = customFocusMinutes && !isNaN(Number(customFocusMinutes)) && Number(customFocusMinutes) > 0
       ? Number(customFocusMinutes)
-      : 25;
+      : (settings.focus_time || 25);
     setTimeLeft(minutes * 60);
     setCurrentPhase('focus');
     setIsRunning(true);
@@ -204,7 +271,7 @@ const Timer = forwardRef((props, ref) => {
   };
 
   const startShortBreak = () => {
-    setTimeLeft(5 * 60);
+    setTimeLeft((settings.short_break_time || 5) * 60);
     setCurrentPhase('shortBreak');
     setIsRunning(true);
     setIsPaused(false);
@@ -212,7 +279,7 @@ const Timer = forwardRef((props, ref) => {
   };
 
   const startLongBreak = () => {
-    setTimeLeft(15 * 60);
+    setTimeLeft((settings.long_break_time || 15) * 60);
     setCurrentPhase('longBreak');
     setIsRunning(true);
     setIsPaused(false);
@@ -234,7 +301,7 @@ const Timer = forwardRef((props, ref) => {
   const resetTimer = () => {
     setIsRunning(false);
     setIsPaused(false);
-    setTimeLeft(25 * 60);
+    setTimeLeft((settings.focus_time || 25) * 60);
     setCurrentPhase('focus');
   };
 
@@ -379,14 +446,14 @@ const Timer = forwardRef((props, ref) => {
             <p className="text-white/60 text-sm">Sessões hoje</p>
             <p className="text-2xl font-semibold text-white">
               {JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
-                .filter(s => new Date(s.timestamp).toDateString() === new Date().toDateString()).length}
+                .filter(s => s.type === 'session' && new Date(s.timestamp).toDateString() === new Date().toDateString()).length}
             </p>
           </div>
           <div className="text-center">
             <p className="text-white/60 text-sm">Tempo total</p>
             <p className="text-2xl font-semibold text-white">
               {Math.round(JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
-                .filter(s => new Date(s.timestamp).toDateString() === new Date().toDateString())
+                .filter(s => s.type === 'session' && new Date(s.timestamp).toDateString() === new Date().toDateString())
                 .reduce((total, s) => total + (s.duration || 0), 0) / 60)}min
             </p>
           </div>
@@ -519,7 +586,7 @@ const Timer = forwardRef((props, ref) => {
               <div>
                 <label className="block text-white/80 text-sm mb-2">Tags (opcional)</label>
                 <div className="flex flex-wrap gap-2">
-                  {['frontend', 'backend', 'bugfix', 'feature', 'refactor', 'testing'].map(tag => (
+                  {(availableTags.length > 0 ? availableTags : ['frontend', 'backend', 'bugfix', 'feature', 'refactor', 'testing']).map(tag => (
                     <button
                       key={tag}
                       onClick={() => {
@@ -543,7 +610,16 @@ const Timer = forwardRef((props, ref) => {
 
               <div className="flex space-x-3 pt-4">
                 <button
-                  onClick={() => setShowNoteModal(false)}
+                  onClick={() => {
+                    setShowNoteModal(false);
+                    setSessionNote('');
+                    setSelectedTags([]);
+
+                    if (pendingAutoStartPhase === 'shortBreak') startShortBreak();
+                    if (pendingAutoStartPhase === 'longBreak') startLongBreak();
+                    if (pendingAutoStartPhase === 'focus') startFocus();
+                    setPendingAutoStartPhase(null);
+                  }}
                   className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
                 >
                   Pular
@@ -570,6 +646,11 @@ const Timer = forwardRef((props, ref) => {
                     setShowNoteModal(false);
                     setSessionNote('');
                     setSelectedTags([]);
+
+                    if (pendingAutoStartPhase === 'shortBreak') startShortBreak();
+                    if (pendingAutoStartPhase === 'longBreak') startLongBreak();
+                    if (pendingAutoStartPhase === 'focus') startFocus();
+                    setPendingAutoStartPhase(null);
                   }}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >

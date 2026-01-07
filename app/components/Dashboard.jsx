@@ -205,38 +205,47 @@ const Dashboard = ({ onClose }) => {
                 <span>🕐</span> Atividades Recentes
               </h3>
               <div className="space-y-3 max-h-96 overflow-y-auto scrollbar-hide">
-                {stats.recentActivities.slice(0, 10).map((activity, index) => (
-                  <div 
-                    key={activity.id} 
-                    className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-3 h-3 rounded-full ${
-                        activity.phase === 'focus' ? 'bg-red-400' : 
-                        activity.phase === 'shortBreak' ? 'bg-blue-400' : 'bg-green-400'
-                      }`} />
-                      <div>
-                        <p className="text-white font-medium">{activity.name}</p>
-                        <p className="text-white/40 text-sm">
-                          {new Date(activity.timestamp).toLocaleDateString('pt-BR')} às{' '}
-                          {new Date(activity.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                        </p>
+                {stats.recentActivities.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center">
+                    <p className="text-white font-medium mb-2">Ainda sem atividades</p>
+                    <p className="text-white/50 text-sm">
+                      Inicie seu primeiro ciclo no Timer para ver estatísticas e histórico aqui.
+                    </p>
+                  </div>
+                ) : (
+                  stats.recentActivities.slice(0, 10).map((activity) => (
+                    <div 
+                      key={activity.id} 
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all duration-200"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className={`w-3 h-3 rounded-full ${
+                          activity.phase === 'focus' ? 'bg-red-400' : 
+                          activity.phase === 'shortBreak' ? 'bg-blue-400' : 'bg-green-400'
+                        }`} />
+                        <div>
+                          <p className="text-white font-medium">{activity.name}</p>
+                          <p className="text-white/40 text-sm">
+                            {new Date(activity.timestamp).toLocaleDateString('pt-BR')} às{' '}
+                            {new Date(activity.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-white font-medium">{Math.round(activity.duration / 60)} min</p>
+                        {activity.tags && activity.tags.length > 0 && (
+                          <div className="flex gap-1 mt-1">
+                            {activity.tags.map((tag, i) => (
+                              <span key={i} className="text-xs bg-white/10 px-2 py-1 rounded-full text-white/60">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-white font-medium">{Math.round(activity.duration / 60)} min</p>
-                      {activity.tags && activity.tags.length > 0 && (
-                        <div className="flex gap-1 mt-1">
-                          {activity.tags.map((tag, i) => (
-                            <span key={i} className="text-xs bg-white/10 px-2 py-1 rounded-full text-white/60">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </div>
           </div>
