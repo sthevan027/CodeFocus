@@ -4,7 +4,10 @@ class NotificationManager {
     this.audioContext = null;
     this.sounds = {};
     this.toastContainer = null;
-    this.init();
+    // Evitar SSR: window/document não existem no server
+    if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+      this.init();
+    }
   }
 
   async init() {
@@ -21,6 +24,7 @@ class NotificationManager {
 
   // Criar container para toasts
   createToastContainer() {
+    if (typeof document === 'undefined') return;
     if (this.toastContainer) return;
     
     this.toastContainer = document.createElement('div');
@@ -74,6 +78,7 @@ class NotificationManager {
 
   // Mostrar toast no site
   showToast(title, message = '', type = 'info', duration = 4000) {
+    if (typeof document === 'undefined') return null;
     this.createToastContainer();
     
     const toast = document.createElement('div');

@@ -11,14 +11,17 @@ import SettingsScreen from '../components/SettingsScreen'
 import EditProfileModal from '../components/EditProfileModal'
 import TagManager from '../components/TagManager'
 import ShortcutsModal from '../components/ShortcutsModal'
+import OnboardingModal from '../components/OnboardingModal'
 
 export default function Home() {
-  const { isAuthenticated, logout, pendingVerification } = useAuth()
+  const { isAuthenticated, logout, pendingVerification, user } = useAuth()
   const [activeView, setActiveView] = useState('timer')
   const [showEditProfile, setShowEditProfile] = useState(false)
   const [showShortcuts, setShowShortcuts] = useState(false)
   const [authView, setAuthView] = useState('login')
+  const [showOnboarding, setShowOnboarding] = useState(false)
   const timerRef = useRef(null)
+  const offlineModeEnabled = process.env.NEXT_PUBLIC_OFFLINE_MODE === 'true'
 
   // Definir atalhos de teclado
   const shortcuts = {
@@ -71,6 +74,16 @@ export default function Home() {
       window.showToast('Bem-vindo ao CodeFocus! Pressione ? para ver os atalhos', 'info', 5000)
     }
   }, [isAuthenticated])
+
+  // Onboarding (primeiro login)
+  useEffect(() => {
+    if (!isAuthenticated || !user) return
+    try {
+      const key = `codefocus-onboarding-completed-${user.id}`
+      const completed = localStorage.getItem(key) === 'true'
+      if (!completed) setShowOnboarding(true)
+    } catch {}
+  }, [isAuthenticated, user])
 
   // Mostrar tela de verificação se necessário
   if (pendingVerification) {
@@ -134,6 +147,14 @@ export default function Home() {
       {/* Main Content Area */}
       <main className="flex-1 ml-20 overflow-hidden">
         <div className="container mx-auto px-6 py-8">
+          {offlineModeEnabled && (
+            <div className="mb-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 px-4 py-3 text-yellow-200">
+              <p className="text-sm">
+                <strong>Modo offline ativo</strong>: seus dados podem ficar apenas no seu navegador (localStorage).
+                Para desativar, defina <code>NEXT_PUBLIC_OFFLINE_MODE=false</code>.
+              </p>
+            </div>
+          )}
           {renderContent()}
         </div>
       </main>
@@ -162,6 +183,27 @@ export default function Home() {
       <ShortcutsModal 
         isOpen={showShortcuts}
         onClose={() => setShowShortcuts(false)}
+      />
+
+      {/* Onboarding Modal */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        userId={user?.id}
+        onClose={() => {
+          try {
+            if (user?.id) localStorage.setItem(`codefocus-onboarding-completed-${user.id}`, 'true')
+          } catch {}
+          setShowOnboarding(false)
+        }}
+        onGoToSettings={() => {
+          setActiveView('settings')
+        }}
+        onGoToTags={() => {
+          setActiveView('tasks')
+        }}
+        onGoToTimer={() => {
+          setActiveView('timer')
+        }}
       />
     </div>
   )

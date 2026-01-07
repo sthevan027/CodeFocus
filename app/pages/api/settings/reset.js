@@ -16,6 +16,7 @@ export default async function handler(req, res) {
       focus_time: 25,
       short_break_time: 5,
       long_break_time: 15,
+      cycles_before_long_break: 4,
       auto_start_breaks: false,
       auto_start_pomodoros: false,
       sound_enabled: true,

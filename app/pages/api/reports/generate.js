@@ -30,10 +30,11 @@ export default async function handler(req, res) {
     const totalCycles = cycles?.length || 0
     const completedCycles = cycles?.filter(c => c.completed).length || 0
     const interruptedCycles = cycles?.filter(c => c.interrupted).length || 0
-    const totalFocusTime = cycles
+    // duration no banco é em MINUTOS
+    const totalFocusMinutes = cycles
       ?.filter(c => c.phase === 'focus' && c.completed)
       .reduce((sum, c) => sum + c.duration, 0) || 0
-    const totalBreakTime = cycles
+    const totalBreakMinutes = cycles
       ?.filter(c => ['shortBreak', 'longBreak'].includes(c.phase) && c.completed)
       .reduce((sum, c) => sum + c.duration, 0) || 0
 
@@ -41,8 +42,8 @@ export default async function handler(req, res) {
     let productivityScore = 0
     if (totalCycles > 0) {
       const completionRate = completedCycles / totalCycles
-      const focusEfficiency = (totalFocusTime + totalBreakTime) > 0
-        ? totalFocusTime / (totalFocusTime + totalBreakTime)
+      const focusEfficiency = (totalFocusMinutes + totalBreakMinutes) > 0
+        ? totalFocusMinutes / (totalFocusMinutes + totalBreakMinutes)
         : 0
       productivityScore = Math.round((completionRate * 0.6 + focusEfficiency * 0.4) * 100)
     }
@@ -70,8 +71,8 @@ export default async function handler(req, res) {
         total_cycles: totalCycles,
         completed_cycles: completedCycles,
         interrupted_cycles: interruptedCycles,
-        total_focus_time: totalFocusTime,
-        total_break_time: totalBreakTime,
+        total_focus_time: totalFocusMinutes,
+        total_break_time: totalBreakMinutes,
         productivity_score: productivityScore,
         include_git_data: validatedData.include_git_data,
         include_statistics: validatedData.include_statistics,

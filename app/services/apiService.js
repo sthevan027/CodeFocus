@@ -16,7 +16,9 @@ class ApiService {
       ...options,
     }
 
-    // Adicionar token de autenticação se existir
+    // Preferir cookie httpOnly (credentials include).
+    // Manter compatibilidade com Bearer via localStorage, se existir.
+    config.credentials = 'include'
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('auth-token')
       if (token) {
@@ -44,11 +46,18 @@ class ApiService {
 
   // Autenticação
   async register(userData) {
-    return this.request('/auth/register', {
+    const response = await this.request('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     })
+
+    // Salvar token (registro também retorna token)
+    if (response.access_token && typeof window !== 'undefined') {
+      localStorage.setItem('auth-token', response.access_token)
+    }
+
+    return response
   }
 
   async login({ email, password }) {
@@ -64,6 +73,12 @@ class ApiService {
     }
 
     return response
+  }
+
+  async logout() {
+    return this.request('/auth/logout', {
+      method: 'POST',
+    })
   }
 
   async getCurrentUser() {
@@ -82,33 +97,12 @@ class ApiService {
     })
   }
 
-  async oauthCallback(provider, code) {
-    const endpoint = provider === 'google' ? '/auth/google/callback' : '/auth/github/callback'
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ code })
-    })
-    if (response.access_token && typeof window !== 'undefined') {
-      localStorage.setItem('auth-token', response.access_token)
-    }
-    return response
-  }
-
   // Usuários
   async updateUser(userData) {
     return this.request('/users/me', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
-    })
-  }
-
-  async updateProfile(userId, updates) {
-    return this.request(`/users/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updates),
     })
   }
 
@@ -119,7 +113,7 @@ class ApiService {
   }
 
   // Logout
-  logout() {
+  clearLocalSession() {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth-token')
       localStorage.removeItem('codefocus-user')

@@ -1,61 +1,59 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import apiService from '../services/apiService';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS, normalizeSettings } from '../utils/settingsUtils';
 
 const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
-  const { user, updateProfile } = useAuth();
   const [settings, setSettings] = useState({
-    notifications: true,
-    sounds: true,
-    autoCommit: false,
-    focusDuration: 25,
-    shortBreakDuration: 5,
-    longBreakDuration: 15,
-    cyclesBeforeLongBreak: 4,
-    autoStartBreaks: false,
-    autoStartPomodoros: false,
-    customName: user?.name || '',
-    customEmail: user?.email || ''
+    ...loadSettings(),
   });
 
   useEffect(() => {
-    if (user) {
-      setSettings(prev => ({
-        ...prev,
-        customName: user.name || '',
-        customEmail: user.email || ''
-      }));
-    }
-  }, [user]);
+    // Sincronizar com backend quando autenticado (token existe)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    if (!token) return;
 
-  const handleSave = () => {
-    // Salvar configurações no localStorage
-    localStorage.setItem('codefocus-settings', JSON.stringify(settings));
-    
-    // Atualizar perfil do usuário se necessário
-    if (settings.customName !== user?.name || settings.customEmail !== user?.email) {
-      updateProfile({
-        name: settings.customName,
-        email: settings.customEmail
-      });
+    (async () => {
+      try {
+        const remote = await apiService.getSettings();
+        const normalized = normalizeSettings(remote);
+        setSettings(normalized);
+        saveSettings(normalized);
+      } catch (e) {
+        // manter local como fallback
+        console.warn('Não foi possível carregar configurações do backend:', e?.message || e);
+      }
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    const normalized = normalizeSettings(settings);
+    saveSettings(normalized);
+
+    // Persistir no backend quando autenticado
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    if (token) {
+      try {
+        await apiService.updateSettings(normalized);
+      } catch (e) {
+        console.warn('Não foi possível salvar configurações no backend:', e?.message || e);
+      }
     }
-    
+
     if (!asPage && onClose) onClose();
   };
 
-  const handleReset = () => {
-    setSettings({
-      notifications: true,
-      sounds: true,
-      autoCommit: false,
-      focusDuration: 25,
-      shortBreakDuration: 5,
-      longBreakDuration: 15,
-      cyclesBeforeLongBreak: 4,
-      autoStartBreaks: false,
-      autoStartPomodoros: false,
-      customName: user?.name || '',
-      customEmail: user?.email || ''
-    });
+  const handleReset = async () => {
+    setSettings({ ...DEFAULT_SETTINGS });
+    saveSettings(DEFAULT_SETTINGS);
+
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
+    if (token) {
+      try {
+        await apiService.resetSettings();
+      } catch (e) {
+        console.warn('Não foi possível resetar configurações no backend:', e?.message || e);
+      }
+    }
   };
 
   if (!asPage && !isOpen) return null;
@@ -113,8 +111,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
                 <label className="block text-white/90 text-sm mb-2">Foco (minutos)</label>
                 <input
                   type="number"
-                  value={settings.focusDuration}
-                  onChange={(e) => setSettings(prev => ({ ...prev, focusDuration: parseInt(e.target.value) || 25 }))}
+                  value={settings.focus_time}
+                  onChange={(e) => setSettings(prev => ({ ...prev, focus_time: parseInt(e.target.value) || 25 }))}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="1"
                   max="120"
@@ -124,8 +122,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
                 <label className="block text-white/90 text-sm mb-2">Pausa Curta (minutos)</label>
                 <input
                   type="number"
-                  value={settings.shortBreakDuration}
-                  onChange={(e) => setSettings(prev => ({ ...prev, shortBreakDuration: parseInt(e.target.value) || 5 }))}
+                  value={settings.short_break_time}
+                  onChange={(e) => setSettings(prev => ({ ...prev, short_break_time: parseInt(e.target.value) || 5 }))}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="1"
                   max="30"
@@ -135,8 +133,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
                 <label className="block text-white/90 text-sm mb-2">Pausa Longa (minutos)</label>
                 <input
                   type="number"
-                  value={settings.longBreakDuration}
-                  onChange={(e) => setSettings(prev => ({ ...prev, longBreakDuration: parseInt(e.target.value) || 15 }))}
+                  value={settings.long_break_time}
+                  onChange={(e) => setSettings(prev => ({ ...prev, long_break_time: parseInt(e.target.value) || 15 }))}
                   className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   min="1"
                   max="60"
@@ -157,8 +155,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
               <label className="block text-white/90 text-sm mb-2">Ciclos antes da pausa longa</label>
               <input
                 type="number"
-                value={settings.cyclesBeforeLongBreak}
-                onChange={(e) => setSettings(prev => ({ ...prev, cyclesBeforeLongBreak: parseInt(e.target.value) || 4 }))}
+                value={settings.cycles_before_long_break}
+                onChange={(e) => setSettings(prev => ({ ...prev, cycles_before_long_break: parseInt(e.target.value) || 4 }))}
                 className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 min="1"
                 max="10"
@@ -185,8 +183,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
                   <input 
                     type="checkbox" 
                     className="sr-only peer"
-                    checked={settings.autoStartBreaks}
-                    onChange={(e) => setSettings(prev => ({ ...prev, autoStartBreaks: e.target.checked }))}
+                    checked={settings.auto_start_breaks}
+                    onChange={(e) => setSettings(prev => ({ ...prev, auto_start_breaks: e.target.checked }))}
                   />
                   <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
@@ -200,8 +198,8 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
                   <input 
                     type="checkbox" 
                     className="sr-only peer"
-                    checked={settings.autoStartPomodoros}
-                    onChange={(e) => setSettings(prev => ({ ...prev, autoStartPomodoros: e.target.checked }))}
+                    checked={settings.auto_start_pomodoros}
+                    onChange={(e) => setSettings(prev => ({ ...prev, auto_start_pomodoros: e.target.checked }))}
                   />
                   <div className="w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>

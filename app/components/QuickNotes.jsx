@@ -1,16 +1,30 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 
-const QuickNotes = ({ activities, onUpdate, userId }) => {
+const colorFromString = (value) => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = value.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 80% 55%)`;
+};
+
+const QuickNotes = ({ onUpdate = () => {} } = {}) => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [notes, setNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [selectedTags, setSelectedTags] = useState([]);
-  const [userTags, setUserTags] = useState({});
+  const [userTags, setUserTags] = useState([]);
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
+  const [sessions, setSessions] = useState([]);
 
   useEffect(() => {
+    if (!userId) return;
     loadNotes();
+    loadSessions();
     loadUserTags();
   }, [userId]);
 
@@ -23,10 +37,19 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
     }
   };
 
+  const loadSessions = () => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(`codefocus-history-${userId}`) || '[]');
+      setSessions(Array.isArray(saved) ? saved.filter((s) => s.type === 'session') : []);
+    } catch (error) {
+      console.error('Erro ao carregar sessões:', error);
+    }
+  };
+
   const loadUserTags = () => {
     try {
-      const savedTags = JSON.parse(localStorage.getItem(`codefocus-tags-${userId}`) || '{}');
-      setUserTags(savedTags);
+      const savedTags = JSON.parse(localStorage.getItem(`codefocus-tags-${userId}`) || '[]');
+      setUserTags(Array.isArray(savedTags) ? savedTags : []);
     } catch (error) {
       console.error('Erro ao carregar tags:', error);
     }
@@ -44,6 +67,7 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
 
   const addNote = () => {
     if (!newNote.trim()) return;
+    if (!userId) return;
 
     const note = {
       id: Date.now(),
@@ -88,7 +112,15 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
     return `${hours}h ${minutes}m`;
   };
 
-  const filteredActivities = [...activities, ...notes]
+  const tagMeta = useMemo(() => {
+    const meta = {};
+    userTags.forEach((t) => {
+      meta[t] = { color: colorFromString(t) };
+    });
+    return meta;
+  }, [userTags]);
+
+  const filteredActivities = [...sessions, ...notes]
     .filter(activity => {
       // Filtro por tipo
       if (filter === 'sessions' && activity.type !== 'session') return false;
@@ -137,11 +169,11 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
           </div>
 
           {/* Seleção de Tags */}
-          {Object.keys(userTags).length > 0 && (
+          {userTags.length > 0 && (
             <div>
               <label className="block text-white/80 text-sm mb-2">Tags</label>
               <div className="flex flex-wrap gap-2">
-                {Object.entries(userTags).map(([tagName, tagData]) => (
+                {userTags.map((tagName) => (
                   <button
                     key={tagName}
                     onClick={() => toggleTag(tagName)}
@@ -151,8 +183,8 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
                         : 'text-white/60 hover:text-white'
                     }`}
                     style={{
-                      backgroundColor: selectedTags.includes(tagName) ? tagData.color : 'transparent',
-                      border: `1px solid ${tagData.color}`
+                      backgroundColor: selectedTags.includes(tagName) ? tagMeta[tagName]?.color : 'transparent',
+                      border: `1px solid ${tagMeta[tagName]?.color}`
                     }}
                   >
                     #{tagName}
@@ -244,7 +276,7 @@ const QuickNotes = ({ activities, onUpdate, userId }) => {
                         key={tag}
                         className="px-2 py-1 rounded-full text-xs font-medium"
                         style={{
-                          backgroundColor: userTags[tag]?.color || '#3B82F6',
+                          backgroundColor: tagMeta[tag]?.color || '#3B82F6',
                           color: 'white'
                         }}
                       >
