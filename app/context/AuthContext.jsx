@@ -37,8 +37,6 @@ export const AuthProvider = ({ children }) => {
 
   const syncSettingsFromBackend = async () => {
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-      if (!token) return;
       const remote = await apiService.getSettings();
       const normalized = normalizeSettings(remote);
       saveSettings(normalized);
@@ -57,19 +55,16 @@ export const AuthProvider = ({ children }) => {
         try {
           const currentUser = await apiService.getCurrentUser();
           const normalized = normalizeUser(currentUser);
-          if (normalized && normalized.is_verified) {
+          if (normalized) {
             setUser(normalized);
             setIsAuthenticated(true);
             saveUser(normalized);
             await syncSettingsFromBackend();
-          } else if (normalized && !normalized.is_verified) {
-            setPendingVerification(normalized);
           }
           return;
         } catch (error) {
           if (!OFFLINE_MODE_ENABLED) {
             console.warn('Falha ao buscar usuário do backend. Limpando sessão local.', error);
-            localStorage.removeItem('auth-token');
             localStorage.removeItem('codefocus-user');
             return;
           }
@@ -123,11 +118,6 @@ export const AuthProvider = ({ children }) => {
       const result = await apiService.login({ email, password });
       if (result && result.user) {
         const normalized = normalizeUser(result.user);
-        // Verificar se o email foi verificado (backend usa is_verified)
-        if (!normalized.is_verified) {
-          setPendingVerification(normalized);
-          return { success: false, error: 'Email não verificado', needsVerification: true };
-        }
         setUser(normalized);
         setIsAuthenticated(true);
         saveUser(normalized);
@@ -175,8 +165,15 @@ export const AuthProvider = ({ children }) => {
       const result = await apiService.register(backendData);
       if (result && result.user) {
         const normalized = normalizeUser(result.user);
-        setPendingVerification(normalized);
-        return { success: true, user: normalized, needsVerification: true };
+        if (result.needs_verification) {
+          setPendingVerification(normalized);
+          return { success: true, user: normalized, needsVerification: true, verificationType: 'link' };
+        }
+        setUser(normalized);
+        setIsAuthenticated(true);
+        saveUser(normalized);
+        await syncSettingsFromBackend();
+        return { success: true, user: normalized };
       }
       return { success: false, error: 'Resposta inválida do servidor' };
     } catch (error) {
@@ -218,38 +215,20 @@ export const AuthProvider = ({ children }) => {
   const verifyEmail = async (email, code) => {
     try {
       setLoading(true);
-      
-      // Tentar verificar via backend primeiro
+      // Supabase Auth verifica por link no email. Aqui apenas tenta recarregar /me.
       try {
-        const result = await apiService.verifyEmail(email, code);
-        if (result && result.message) {
-          // Sucesso no backend - buscar usuário atualizado
-          try {
-            const currentUser = await apiService.getCurrentUser();
-            if (currentUser) {
-              const normalized = normalizeUser(currentUser);
-              setUser(normalized);
-              setIsAuthenticated(true);
-              setPendingVerification(null);
-              saveUser(normalized);
-              return { success: true, user: normalized };
-            }
-          } catch (err) {
-            console.log('Erro ao buscar usuário após verificação:', err);
-          }
-          // Fallback: atualizar pendingVerification
-          const verifiedUser = normalizeUser({ ...pendingVerification, is_verified: true, verified_at: new Date().toISOString() });
-          setUser(verifiedUser);
-          setIsAuthenticated(true);
-          setPendingVerification(null);
-          saveUser(verifiedUser);
-          return { success: true, user: verifiedUser };
-        }
-      } catch (backendError) {
+        const currentUser = await apiService.getCurrentUser();
+        const normalized = normalizeUser(currentUser);
+        setUser(normalized);
+        setIsAuthenticated(true);
+        setPendingVerification(null);
+        saveUser(normalized);
+        await syncSettingsFromBackend();
+        return { success: true, user: normalized };
+      } catch (e) {
         if (!OFFLINE_MODE_ENABLED) {
-          return { success: false, error: backendError.message || 'Erro ao verificar email' };
+          return { success: false, error: 'Abra o link do email de confirmação e depois tente entrar novamente.' };
         }
-        console.log('Modo offline: erro no backend, usando fallback local...', backendError.message);
       }
       
       // Fallback local
@@ -324,7 +303,6 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setPendingVerification(null);
       localStorage.removeItem('codefocus-user');
-      localStorage.removeItem('auth-token');
     } catch (error) {
       console.error('Erro no logout:', error);
     }

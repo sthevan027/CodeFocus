@@ -10,13 +10,42 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Cliente Supabase para uso no cliente (browser)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
-// Cliente Supabase para uso no servidor (API Routes)
-export const createServerClient = () => {
+// Cliente Supabase admin para uso no servidor (API Routes) - BYPASSA RLS
+// Use APENAS para healthchecks/admin (ex: deletar usuário do auth).
+export const createAdminClient = () => {
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!serviceRoleKey) {
     throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY')
   }
   return createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
+
+// Cliente Supabase no servidor usando ANON key (não bypassa RLS)
+export const createAnonServerClient = () => {
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false
+    }
+  })
+}
+
+// Cliente Supabase no servidor "como o usuário" (RLS ativo)
+export const createRlsServerClient = (accessToken) => {
+  if (!accessToken) {
+    throw new Error('Missing Supabase access token')
+  }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    },
     auth: {
       autoRefreshToken: false,
       persistSession: false

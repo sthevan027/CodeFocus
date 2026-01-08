@@ -1,12 +1,11 @@
-import { createServerClient } from '../../../lib/supabase'
+import { createRlsServerClient } from '../../../lib/supabase'
 import { requireAuth } from '../../../lib/auth'
 import { settingsUpdateSchema } from '../../../lib/validations'
 
 export default async function handler(req, res) {
-  const supabase = createServerClient()
-
   try {
-    const userId = await requireAuth(req)
+    const { userId, accessToken } = await requireAuth(req)
+    const supabase = createRlsServerClient(accessToken)
 
     if (req.method === 'GET') {
       // Obter configurações
@@ -16,19 +15,15 @@ export default async function handler(req, res) {
         .eq('user_id', userId)
         .single()
 
+      // Se não existir, nosso trigger em auth.users deve criar automaticamente.
+      // Ainda assim, mantemos fallback criando via RLS (permitido pela policy).
       if (error && error.code === 'PGRST116') {
-        // Configurações não existem, criar padrão
         const { data: newSettings, error: createError } = await supabase
           .from('user_settings')
           .insert({ user_id: userId })
           .select()
           .single()
-
-        if (createError) {
-          console.error('Erro ao criar configurações:', createError)
-          return res.status(500).json({ error: 'Erro ao criar configurações' })
-        }
-
+        if (createError) return res.status(500).json({ error: 'Erro ao criar configurações' })
         return res.status(200).json(newSettings)
       }
 

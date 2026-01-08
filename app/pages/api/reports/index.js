@@ -1,4 +1,4 @@
-import { createServerClient } from '../../../lib/supabase'
+import { createRlsServerClient } from '../../../lib/supabase'
 import { requireAuth } from '../../../lib/auth'
 
 export default async function handler(req, res) {
@@ -6,10 +6,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' })
   }
 
-  const supabase = createServerClient()
-
   try {
-    const userId = await requireAuth(req)
+    const { userId, accessToken } = await requireAuth(req)
+    const supabase = createRlsServerClient(accessToken)
     const { skip = 0, limit = 50 } = req.query
 
     const { data: reports, error } = await supabase

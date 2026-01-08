@@ -1,4 +1,4 @@
-import { createServerClient } from '../../lib/supabase'
+import { createAdminClient } from '../../lib/supabase'
 import { getRequestId, log } from '../../lib/logger'
 
 export default async function handler(req, res) {
@@ -6,11 +6,11 @@ export default async function handler(req, res) {
   res.setHeader('x-request-id', requestId)
 
   try {
-    const supabase = createServerClient()
+    const supabase = createAdminClient()
     const startedAt = Date.now()
 
     // Ping simples no banco (service role) para validar conectividade
-    const { error } = await supabase.from('users').select('id').limit(1)
+    const { error } = await supabase.from('profiles').select('id').limit(1)
     const latencyMs = Date.now() - startedAt
 
     if (error) {

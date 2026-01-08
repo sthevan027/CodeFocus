@@ -1,10 +1,8 @@
-import { createServerClient } from '../../../lib/supabase'
-import { verifyPassword, createToken } from '../../../lib/auth'
+import { createAnonServerClient, createRlsServerClient } from '../../../lib/supabase'
 import { loginSchema } from '../../../lib/validations'
 import { checkRateLimit, getClientIp } from '../../../lib/rateLimit'
 import { getRequestId, log } from '../../../lib/logger'
-import { serializeCookie } from '../../../lib/cookies'
-import { AUTH_COOKIE_NAME } from '../../../lib/auth'
+import { setAuthCookies } from '../../../lib/auth'
 
 export default async function handler(req, res) {
   const requestId = getRequestId(req)
@@ -29,74 +27,36 @@ export default async function handler(req, res) {
     // Validar dados
     const validatedData = loginSchema.parse(req.body)
 
-    const supabase = createServerClient()
+    const supabase = createAnonServerClient()
 
-    // Buscar usuário
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('*')
-      .eq('email', validatedData.email)
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: validatedData.email,
+      password: validatedData.password
+    })
+
+    if (error || !data?.session || !data?.user) {
+      log('warn', 'Login inválido (supabase)', { requestId, ip, error: error?.message })
+      return res.status(401).json({ error: 'Email ou senha incorretos' })
+    }
+
+    // Set cookie httpOnly com access + refresh
+    setAuthCookies(res, data.session)
+
+    // Buscar profile via RLS
+    const rls = createRlsServerClient(data.session.access_token)
+    const { data: profile } = await rls
+      .from('profiles')
+      .select('id, email, username, full_name, avatar_url, created_at, updated_at')
+      .eq('id', data.user.id)
       .single()
 
-    if (userError || !user) {
-      log('warn', 'Login inválido (email não encontrado)', { requestId, ip })
-      return res.status(401).json({ error: 'Email ou senha incorretos' })
-    }
-
-    // Verificar senha
-    const isValidPassword = await verifyPassword(validatedData.password, user.hashed_password)
-    if (!isValidPassword) {
-      log('warn', 'Login inválido (senha incorreta)', { requestId, ip, userId: user.id })
-      return res.status(401).json({ error: 'Email ou senha incorretos' })
-    }
-
-    // Verificar se está ativo
-    if (!user.is_active) {
-      return res.status(400).json({ error: 'Usuário inativo' })
-    }
-
-    // Verificar se o email foi verificado
-    if (!user.is_verified) {
-      log('warn', 'Login bloqueado (email não verificado)', { requestId, ip, userId: user.id })
-      return res.status(400).json({ error: 'Email não verificado. Verifique seu email primeiro.' })
-    }
-
-    // Atualizar último login
-    await supabase
-      .from('users')
-      .update({ last_login: new Date().toISOString() })
-      .eq('id', user.id)
-
-    // Gerar token
-    const token = createToken({ userId: user.id })
-
-    // Cookie httpOnly (preferido em produção)
-    res.setHeader(
-      'Set-Cookie',
-      serializeCookie(AUTH_COOKIE_NAME, token, {
-        httpOnly: true,
-        sameSite: 'Lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 30 * 60
-      })
-    )
-
     return res.status(200).json({
-      access_token: token,
-      token_type: 'bearer',
-      expires_in: 30 * 60, // 30 minutos
       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        full_name: user.full_name,
-        avatar_url: user.avatar_url,
-        provider: user.provider,
-        is_active: user.is_active,
-        is_verified: user.is_verified,
-        created_at: user.created_at,
-        last_login: user.last_login
+        id: data.user.id,
+        email: data.user.email,
+        username: profile?.username || null,
+        full_name: profile?.full_name || null,
+        avatar_url: profile?.avatar_url || null
       }
     })
   } catch (error) {

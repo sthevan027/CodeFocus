@@ -1,10 +1,8 @@
-import { createServerClient } from '../../../lib/supabase'
-import { hashPassword, createToken } from '../../../lib/auth'
+import { createAnonServerClient, createRlsServerClient } from '../../../lib/supabase'
+import { setAuthCookies } from '../../../lib/auth'
 import { registerSchema } from '../../../lib/validations'
 import { checkRateLimit, getClientIp } from '../../../lib/rateLimit'
 import { getRequestId, log } from '../../../lib/logger'
-import { serializeCookie } from '../../../lib/cookies'
-import { AUTH_COOKIE_NAME } from '../../../lib/auth'
 
 export default async function handler(req, res) {
   const requestId = getRequestId(req)
@@ -29,85 +27,56 @@ export default async function handler(req, res) {
     // Validar dados
     const validatedData = registerSchema.parse(req.body)
 
-    const supabase = createServerClient()
+    const supabase = createAnonServerClient()
 
-    // Verificar se o email já existe
-    const { data: existingUser } = await supabase
-      .from('users')
-      .select('id')
-      .eq('email', validatedData.email)
-      .single()
-
-    if (existingUser) {
-      return res.status(400).json({ error: 'Email já registrado' })
-    }
-
-    // Hash da senha
-    const hashedPassword = await hashPassword(validatedData.password)
-
-    // Gerar código de verificação
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString()
-    const verificationCodeExpires = new Date(Date.now() + 5 * 60 * 1000) // 5 minutos
-
-    // Criar usuário
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .insert({
-        email: validatedData.email,
-        username: validatedData.username,
-        full_name: validatedData.full_name,
-        hashed_password: hashedPassword,
-        avatar_url: validatedData.avatar_url,
-        provider: validatedData.provider,
-        is_verified: false,
-        verification_code: verificationCode,
-        verification_code_expires: verificationCodeExpires.toISOString()
-      })
-      .select()
-      .single()
-
-    if (userError) {
-      log('error', 'Erro ao criar usuário', { requestId, ip, error: userError?.message || String(userError) })
-      return res.status(500).json({ error: 'Erro ao criar usuário' })
-    }
-
-    // Criar configurações padrão
-    await supabase.from('user_settings').insert({
-      user_id: user.id
+    // Signup via Supabase Auth (email confirmation é controlado no dashboard do Supabase)
+    const { data, error } = await supabase.auth.signUp({
+      email: validatedData.email,
+      password: validatedData.password,
+      options: {
+        data: {
+          full_name: validatedData.full_name || '',
+          username: validatedData.username || '',
+          avatar_url: validatedData.avatar_url || ''
+        }
+      }
     })
 
-    // TODO: Enviar email de verificação via Resend
-    // await sendVerificationEmail(user.email, verificationCode, user.full_name || user.username)
+    if (error || !data?.user) {
+      // Ex: "User already registered"
+      const msg = error?.message?.toLowerCase?.().includes('already') ? 'Email já registrado' : 'Erro ao criar usuário'
+      log('warn', 'Erro no signup Supabase', { requestId, ip, error: error?.message })
+      return res.status(400).json({ error: msg })
+    }
 
-    // Gerar token
-    const token = createToken({ userId: user.id })
+    // Se o Supabase retornar session, já logamos e setamos cookies
+    if (data.session) {
+      setAuthCookies(res, data.session)
+      const rls = createRlsServerClient(data.session.access_token)
+      const { data: profile } = await rls
+        .from('profiles')
+        .select('id, email, username, full_name, avatar_url')
+        .eq('id', data.user.id)
+        .single()
 
-    // Cookie httpOnly (preferido em produção)
-    res.setHeader(
-      'Set-Cookie',
-      serializeCookie(AUTH_COOKIE_NAME, token, {
-        httpOnly: true,
-        sameSite: 'Lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: 30 * 60
+      return res.status(201).json({
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          username: profile?.username || null,
+          full_name: profile?.full_name || null,
+          avatar_url: profile?.avatar_url || null
+        }
       })
-    )
+    }
 
+    // Caso típico: confirmação de email habilitada → session é null
     return res.status(201).json({
-      access_token: token,
-      token_type: 'bearer',
-      expires_in: 30 * 60, // 30 minutos
+      needs_verification: true,
       user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        full_name: user.full_name,
-        avatar_url: user.avatar_url,
-        provider: user.provider,
-        is_active: user.is_active,
-        is_verified: user.is_verified,
-        created_at: user.created_at
+        id: data.user.id,
+        email: data.user.email,
+        full_name: validatedData.full_name || null
       }
     })
   } catch (error) {

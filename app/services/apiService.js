@@ -1,5 +1,10 @@
 // Serviço para conectar com o backend Next.js
-const API_BASE_URL = typeof window !== 'undefined' ? '/api' : 'http://localhost:3000/api'
+// - No browser: usa rotas relativas (/api)
+// - No SSR: usa NEXT_PUBLIC_APP_URL (ex: https://seuapp.vercel.app) ou cai para rotas relativas
+const API_BASE_URL =
+  typeof window !== 'undefined'
+    ? '/api'
+    : `${process.env.NEXT_PUBLIC_APP_URL || ''}/api`
 
 class ApiService {
   constructor() {
@@ -17,15 +22,7 @@ class ApiService {
     }
 
     // Preferir cookie httpOnly (credentials include).
-    // Manter compatibilidade com Bearer via localStorage, se existir.
     config.credentials = 'include'
-    if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('auth-token')
-      if (token) {
-        config.headers = config.headers || {}
-        config.headers.Authorization = `Bearer ${token}`
-      }
-    }
 
     try {
       const response = await fetch(url, config)
@@ -46,33 +43,19 @@ class ApiService {
 
   // Autenticação
   async register(userData) {
-    const response = await this.request('/auth/register', {
+    return this.request('/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(userData),
     })
-
-    // Salvar token (registro também retorna token)
-    if (response.access_token && typeof window !== 'undefined') {
-      localStorage.setItem('auth-token', response.access_token)
-    }
-
-    return response
   }
 
   async login({ email, password }) {
-    const response = await this.request('/auth/login', {
+    return this.request('/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     })
-
-    // Salvar token
-    if (response.access_token && typeof window !== 'undefined') {
-      localStorage.setItem('auth-token', response.access_token)
-    }
-
-    return response
   }
 
   async logout() {
@@ -115,15 +98,15 @@ class ApiService {
   // Logout
   clearLocalSession() {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth-token')
       localStorage.removeItem('codefocus-user')
     }
   }
 
   // Verificar se está autenticado
   isAuthenticated() {
-    if (typeof window === 'undefined') return false
-    return !!localStorage.getItem('auth-token')
+    // Com cookies httpOnly, não dá pra checar token via JS.
+    // Use /api/auth/me para confirmar sessão.
+    return false
   }
 
   // ========== CICLOS ==========

@@ -1,11 +1,10 @@
-import { createServerClient } from '../../../lib/supabase'
+import { createRlsServerClient } from '../../../lib/supabase'
 import { requireAuth } from '../../../lib/auth'
 
 export default async function handler(req, res) {
-  const supabase = createServerClient()
-
   try {
-    const userId = await requireAuth(req)
+    const { userId, accessToken } = await requireAuth(req)
+    const supabase = createRlsServerClient(accessToken)
     const { id } = req.query
 
     if (req.method === 'GET') {

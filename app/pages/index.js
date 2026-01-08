@@ -85,6 +85,13 @@ export default function Home() {
     } catch {}
   }, [isAuthenticated, user])
 
+  // Evitar setState dentro do render: tratar navegação para "profile" aqui
+  useEffect(() => {
+    if (activeView !== 'profile') return
+    setShowEditProfile(true)
+    setActiveView('timer')
+  }, [activeView])
+
   // Mostrar tela de verificação se necessário
   if (pendingVerification) {
     return (
@@ -126,10 +133,6 @@ export default function Home() {
             <SettingsScreen isOpen={true} onClose={() => setActiveView('timer')} asPage={true} />
           </div>
         )
-      case 'profile':
-        setShowEditProfile(true)
-        setActiveView('timer')
-        return <Timer ref={timerRef} />
       default:
         return <Timer ref={timerRef} />
     }

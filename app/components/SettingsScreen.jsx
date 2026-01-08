@@ -8,10 +8,7 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
   });
 
   useEffect(() => {
-    // Sincronizar com backend quando autenticado (token existe)
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-    if (!token) return;
-
+    // Sincronizar com backend quando autenticado (cookie httpOnly)
     (async () => {
       try {
         const remote = await apiService.getSettings();
@@ -30,13 +27,10 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
     saveSettings(normalized);
 
     // Persistir no backend quando autenticado
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-    if (token) {
-      try {
-        await apiService.updateSettings(normalized);
-      } catch (e) {
-        console.warn('Não foi possível salvar configurações no backend:', e?.message || e);
-      }
+    try {
+      await apiService.updateSettings(normalized);
+    } catch (e) {
+      console.warn('Não foi possível salvar configurações no backend:', e?.message || e);
     }
 
     if (!asPage && onClose) onClose();
@@ -46,13 +40,10 @@ const SettingsScreen = ({ isOpen, onClose, asPage = false }) => {
     setSettings({ ...DEFAULT_SETTINGS });
     saveSettings(DEFAULT_SETTINGS);
 
-    const token = typeof window !== 'undefined' ? localStorage.getItem('auth-token') : null;
-    if (token) {
-      try {
-        await apiService.resetSettings();
-      } catch (e) {
-        console.warn('Não foi possível resetar configurações no backend:', e?.message || e);
-      }
+    try {
+      await apiService.resetSettings();
+    } catch (e) {
+      console.warn('Não foi possível resetar configurações no backend:', e?.message || e);
     }
   };
 

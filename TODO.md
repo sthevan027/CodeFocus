@@ -48,7 +48,7 @@
 - [ ] **Alinhar payloads e nomes de campos**:
   - [x] Backend aceita `full_name` (convertido de `name` no frontend)
   - [ ] Verificar se todos os campos estão consistentes entre frontend e backend
-  - [ ] Testar fluxo completo de registro → verificação → login
+  - [ ] Testar fluxo completo de registro → verificação (link Supabase) → login
 - [ ] **Corrigir fluxo de autenticação/estado do usuário**:
   - [x] Backend retorna `is_verified` (snake_case)
   - [x] Frontend atualizado para usar `is_verified`
@@ -63,16 +63,16 @@
   - [ ] `oauthCallback()` - Implementar OAuth ou remover do frontend
 
 ### Segurança e confiabilidade
-- [ ] **Corrigir expiração do código de verificação**:
-  - [ ] Verificar lógica de expiração em `pages/api/auth/verify-email.js`
-  - [ ] Testar se código expira corretamente após 5 minutos
+- [x] **Verificação de email (Supabase Auth)**:
+  - [x] Fluxo por **link de confirmação** (sem código de 6 dígitos)
+  - [x] Endpoint antigo de código foi descontinuado (`/api/auth/verify-email` retorna 410)
 - [x] **CORS configurável**:
   - [x] Next.js não precisa de CORS explícito (mesma origem)
   - [ ] Configurar CORS no Supabase se necessário
 - [ ] **Tokens e segurança do frontend**:
-  - [ ] Revisar uso de `localStorage` para JWT (risco XSS)
-  - [ ] Considerar httpOnly cookies para produção
-  - [ ] Planejar refresh token / sessão
+  - [x] Removido JWT em `localStorage` (cookie httpOnly como padrão)
+  - [x] Sessão via Supabase Auth + cookies httpOnly (access + refresh)
+  - [ ] Planejar refresh/renovação automática do access token (quando expirar)
 - [ ] **Rate limit básico** em endpoints de auth:
   - [ ] Implementar rate limiting (usar Vercel Edge Config ou middleware)
   - [ ] Proteger: login, resend code, verify
@@ -100,7 +100,6 @@
   - [ ] Atualizar `NEXT_PUBLIC_APP_URL` com URL real
 - [ ] **Variáveis de ambiente em produção**:
   - [ ] Configurar todas as variáveis na Vercel
-  - [ ] `JWT_SECRET` forte e único para produção
   - [ ] `SUPABASE_SERVICE_ROLE_KEY` configurado
   - [ ] `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - [ ] `NEXT_PUBLIC_APP_URL` com URL da Vercel

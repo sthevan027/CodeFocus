@@ -2,10 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 const EmailVerificationScreen = ({ onBack }) => {
-  const { pendingVerification, verifyEmail, resendVerificationCode, loading } = useAuth();
-  const [verificationCode, setVerificationCode] = useState('');
+  const { pendingVerification, resendVerificationCode, loading } = useAuth();
   const [error, setError] = useState('');
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutos
+  const [timeLeft, setTimeLeft] = useState(60); // 1 minuto
   const [canResend, setCanResend] = useState(false);
 
   useEffect(() => {
@@ -28,27 +27,11 @@ const EmailVerificationScreen = ({ onBack }) => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleVerify = async (e) => {
-    e.preventDefault();
-    if (!verificationCode.trim()) {
-      setError('Digite o código de verificação');
-      return;
-    }
-
-    setError('');
-    const result = await verifyEmail(pendingVerification.email, verificationCode);
-    
-    if (!result.success) {
-      setError(result.error);
-    }
-  };
-
   const handleResendCode = async () => {
     const result = await resendVerificationCode(pendingVerification.email);
     if (result.success) {
-      setTimeLeft(300);
+      setTimeLeft(60);
       setCanResend(false);
-      setVerificationCode('');
       setError('');
     } else {
       setError(result.error || 'Erro ao reenviar código');
@@ -82,44 +65,22 @@ const EmailVerificationScreen = ({ onBack }) => {
         
         <div className="text-center mb-6">
           <p className="text-gray-300 mb-2">
-            Enviamos um código de verificação para:
+            Enviamos um <strong>link de confirmação</strong> para:
           </p>
           <p className="text-blue-400 font-medium">{pendingVerification.email}</p>
+          <p className="text-gray-400 text-sm mt-3">
+            Abra sua caixa de entrada, clique no link e depois volte aqui e faça login.
+          </p>
         </div>
 
-        <form onSubmit={handleVerify}>
-          <div className="mb-4">
-            <label className="block text-gray-300 text-sm mb-2">
-              Código de Verificação:
-            </label>
-            <input
-              type="text"
-              placeholder="Digite o código de 6 dígitos"
-              className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white text-center text-xl tracking-widest focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={verificationCode}
-              onChange={e => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              maxLength={6}
-              disabled={loading}
-            />
-          </div>
-
-          {error && (
-            <div className="text-red-400 text-sm mb-4 text-center">{error}</div>
-          )}
-
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 mb-4"
-            disabled={loading || !verificationCode.trim()}
-          >
-            {loading ? 'Verificando...' : 'Verificar E-mail'}
-          </button>
-        </form>
+        {error && (
+          <div className="text-red-400 text-sm mb-4 text-center">{error}</div>
+        )}
 
         <div className="text-center space-y-4">
           {timeLeft > 0 ? (
             <p className="text-gray-400 text-sm">
-              Reenviar código em: <span className="text-blue-400 font-mono">{formatTime(timeLeft)}</span>
+              Reenviar email em: <span className="text-blue-400 font-mono">{formatTime(timeLeft)}</span>
             </p>
           ) : (
             <button
@@ -127,7 +88,7 @@ const EmailVerificationScreen = ({ onBack }) => {
               className="text-blue-400 hover:text-blue-300 text-sm underline"
               disabled={loading}
             >
-              Reenviar código de verificação
+              Reenviar email de confirmação
             </button>
           )}
 
@@ -145,7 +106,7 @@ const EmailVerificationScreen = ({ onBack }) => {
         {/* Dica para desenvolvimento */}
         <div className="mt-6 p-3 bg-yellow-900/20 border border-yellow-600/30 rounded-lg">
           <p className="text-yellow-400 text-xs text-center">
-            💡 <strong>Dica:</strong> Abra o console do navegador (F12) para ver o código de verificação
+            💡 <strong>Dica:</strong> verifique também a caixa de spam/lixo eletrônico.
           </p>
         </div>
       </div>

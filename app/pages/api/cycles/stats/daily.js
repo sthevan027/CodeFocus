@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { createServerClient } from '../../../../lib/supabase'
+import { createRlsServerClient } from '../../../../lib/supabase'
 import { requireAuth } from '../../../../lib/auth'
 
 const querySchema = z.object({
@@ -22,10 +22,9 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Método não permitido' })
   }
 
-  const supabase = createServerClient()
-
   try {
-    const userId = await requireAuth(req)
+    const { userId, accessToken } = await requireAuth(req)
+    const supabase = createRlsServerClient(accessToken)
     const { date } = querySchema.parse(req.query)
 
     if (date) {

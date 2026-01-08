@@ -1,72 +1,65 @@
-import jwt from 'jsonwebtoken'
-import bcrypt from 'bcryptjs'
-import { parseCookies } from './cookies'
+import { parseCookies, serializeCookie } from './cookies'
+import { createAnonServerClient } from './supabase'
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '30m'
-export const AUTH_COOKIE_NAME = 'codefocus_token'
+// Cookies httpOnly para sessão Supabase (MVP)
+export const ACCESS_COOKIE_NAME = 'codefocus_access'
+export const REFRESH_COOKIE_NAME = 'codefocus_refresh'
 
-/**
- * Gera hash da senha
- */
-export async function hashPassword(password) {
-  return bcrypt.hash(password, 10)
-}
-
-/**
- * Verifica se a senha está correta
- */
-export async function verifyPassword(password, hashedPassword) {
-  return bcrypt.compare(password, hashedPassword)
-}
-
-/**
- * Cria token JWT
- */
-export function createToken(payload) {
-  return jwt.sign(payload, JWT_SECRET, {
-    expiresIn: JWT_EXPIRES_IN
-  })
-}
-
-/**
- * Verifica e decodifica token JWT
- */
-export function verifyToken(token) {
-  try {
-    return jwt.verify(token, JWT_SECRET)
-  } catch (error) {
-    return null
-  }
-}
-
-/**
- * Extrai token do header Authorization
- */
-export function getTokenFromRequest(req) {
+export function getAccessTokenFromRequest(req) {
   const authHeader = req.headers.authorization
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Fallback para cookie httpOnly
-    const cookies = parseCookies(req.headers.cookie)
-    return cookies[AUTH_COOKIE_NAME] || null
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7)
   }
-  return authHeader.substring(7)
+  const cookies = parseCookies(req.headers.cookie)
+  return cookies[ACCESS_COOKIE_NAME] || null
 }
 
-/**
- * Middleware para verificar autenticação
- */
+export function getRefreshTokenFromRequest(req) {
+  const cookies = parseCookies(req.headers.cookie)
+  return cookies[REFRESH_COOKIE_NAME] || null
+}
+
+export function setAuthCookies(res, session) {
+  // session: { access_token, refresh_token, expires_in }
+  const secure = process.env.NODE_ENV === 'production'
+  const maxAge = typeof session?.expires_in === 'number' ? session.expires_in : 60 * 60
+
+  const access = serializeCookie(ACCESS_COOKIE_NAME, session.access_token, {
+    httpOnly: true,
+    sameSite: 'Lax',
+    secure,
+    path: '/',
+    maxAge
+  })
+  const refresh = serializeCookie(REFRESH_COOKIE_NAME, session.refresh_token, {
+    httpOnly: true,
+    sameSite: 'Lax',
+    secure,
+    path: '/',
+    // refresh token costuma durar mais; mantendo 30 dias
+    maxAge: 30 * 24 * 60 * 60
+  })
+
+  res.setHeader('Set-Cookie', [access, refresh])
+}
+
+export function clearAuthCookies(res) {
+  const secure = process.env.NODE_ENV === 'production'
+  res.setHeader('Set-Cookie', [
+    serializeCookie(ACCESS_COOKIE_NAME, '', { httpOnly: true, sameSite: 'Lax', secure, path: '/', expires: new Date(0) }),
+    serializeCookie(REFRESH_COOKIE_NAME, '', { httpOnly: true, sameSite: 'Lax', secure, path: '/', expires: new Date(0) })
+  ])
+}
+
+// Valida a sessão Supabase e retorna o userId (auth.uid()) e o accessToken
 export async function requireAuth(req) {
-  const token = getTokenFromRequest(req)
-  if (!token) {
-    throw new Error('Token não fornecido')
-  }
+  const accessToken = getAccessTokenFromRequest(req)
+  if (!accessToken) throw new Error('Token não fornecido')
 
-  const decoded = verifyToken(token)
-  if (!decoded || !decoded.userId) {
-    throw new Error('Token inválido')
-  }
+  const supabase = createAnonServerClient()
+  const { data, error } = await supabase.auth.getUser(accessToken)
+  if (error || !data?.user?.id) throw new Error('Token inválido')
 
-  return decoded.userId
+  return { userId: data.user.id, accessToken }
 }
 
