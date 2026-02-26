@@ -2,8 +2,10 @@
 import { requireAuth } from '../../../lib/auth'
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
+const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+// Garantir apenas a origem (evita redirect_uri duplicado como /api/github/callback/api/github/callback)
+const APP_URL = (rawAppUrl || '').replace(/\/api\/.*$/i, '').replace(/\/+$/, '') || 'http://localhost:3000'
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
