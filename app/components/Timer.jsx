@@ -351,6 +351,29 @@ const Timer = forwardRef((props, ref) => {
     setCurrentPhase('focus');
   };
 
+  const completeTaskEarly = () => {
+    hasHandledCycleCompleteRef.current = true;
+    setIsRunning(false);
+    notificationManager.notifyCycleComplete(currentPhase);
+    const sessionDuration = getPhaseDuration(currentPhase) - timeLeft;
+    saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+    refreshTodayStats();
+    if (currentPhase === 'focus') {
+      const nextCount = getFocusCount() + 1;
+      setFocusCount(nextCount);
+      const every = settings.cycles_before_long_break || 4;
+      const nextBreakPhase = every > 0 && nextCount % every === 0 ? 'longBreak' : 'shortBreak';
+      setShowNoteModal(true);
+      setPendingBreakPhase(nextBreakPhase);
+      if (settings.auto_start_breaks) setPendingAutoStartPhase(nextBreakPhase);
+      setShowGitModal(true);
+    }
+    setSelectedTags([]);
+    if (currentPhase !== 'focus' && settings.auto_start_pomodoros) {
+      startFocus();
+    }
+  };
+
   const handleStartFocus = () => {
     if (!cycleName.trim()) {
       notificationManager.showToast('Escreva o foco na caixa acima', 'Defina um título curto para este ciclo.', 'warning');
@@ -426,20 +449,20 @@ const Timer = forwardRef((props, ref) => {
   }));
 
   return (
-    <div className="flex flex-col items-center min-h-screen">
+    <div className="flex flex-col items-center justify-center gap-2 h-full min-h-0 py-2">
       {/* Status Message */}
-      <div className="text-center mb-6 h-8">
-        <p className="text-lg text-white/80 animate-fade-in">
+      <div className="text-center shrink-0 h-7">
+        <p className="text-base text-white/80 animate-fade-in">
           {getStatusMessage()}
         </p>
       </div>
 
       {/* Timer Principal - Design Melhorado */}
-      <div className="relative w-full max-w-2xl mb-12">
-        {/* Timer Circular com Progress Ring */}
-        <div className="relative mx-auto w-96 h-96 mb-8">
+      <div className="relative w-full max-w-2xl flex-1 min-h-0 flex flex-col items-center justify-center">
+        {/* Timer Circular com Progress Ring - tamanho reduzido para caber sem scroll */}
+        <div className="relative mx-auto w-72 h-72 shrink-0">
           {/* Círculo de fundo */}
-          <svg className="absolute inset-0 w-full h-full">
+          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 384 384" preserveAspectRatio="xMidYMid meet">
             <circle
               cx="192"
               cy="192"
@@ -451,7 +474,7 @@ const Timer = forwardRef((props, ref) => {
           </svg>
 
           {/* Progress Ring Animado */}
-          <svg className="absolute inset-0 w-full h-full transform -rotate-90">
+          <svg className="absolute inset-0 w-full h-full transform -rotate-90" viewBox="0 0 384 384" preserveAspectRatio="xMidYMid meet">
             <circle
               cx="192"
               cy="192"
@@ -473,36 +496,35 @@ const Timer = forwardRef((props, ref) => {
 
           {/* Relógio Digital no centro */}
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-center">
-            <div className="text-7xl font-light text-white mb-4 font-mono tracking-wider">
+            <div className="text-5xl font-light text-white mb-1 font-mono tracking-wider">
               {formatTime(timeLeft)}
             </div>
-            <div className="text-white/60 text-xl mb-2">
+            <div className="text-white/60 text-base mb-0.5 truncate max-w-[200px] mx-auto">
               {cycleName && currentPhase === 'focus' ? cycleName : getPhaseName()}
             </div>
-            {/* Progress percentage */}
-            <div className="text-white/40 text-sm">
+            <div className="text-white/40 text-xs">
               {Math.round(progress)}% completo
             </div>
           </div>
         </div>
 
         {/* Quick Stats */}
-        <div className="flex justify-center gap-8 mb-8">
+        <div className="flex justify-center gap-6 shrink-0 mt-2">
           <div className="text-center">
-            <p className="text-white/60 text-sm">Sessões hoje</p>
-            <p className="text-2xl font-semibold text-white">{todayStats.sessions}</p>
+            <p className="text-white/60 text-xs">Sessões hoje</p>
+            <p className="text-xl font-semibold text-white">{todayStats.sessions}</p>
           </div>
           <div className="text-center">
-            <p className="text-white/60 text-sm">Tempo total</p>
-            <p className="text-2xl font-semibold text-white">{todayStats.minutes}min</p>
+            <p className="text-white/60 text-xs">Tempo total</p>
+            <p className="text-xl font-semibold text-white">{todayStats.minutes}min</p>
           </div>
         </div>
       </div>
 
       {/* Botões de Controle Melhorados */}
-      <div className="flex flex-col items-center gap-6 mb-12">
+      <div className="flex flex-col items-center gap-3 shrink-0 mt-2">
         {!isRunning && !isPaused && (
-          <div className="flex flex-col items-center gap-4">
+          <div className="flex flex-col items-center gap-3">
             {/* Input de nome do ciclo integrado */}
             {currentPhase === 'focus' && (
               <input
@@ -511,7 +533,7 @@ const Timer = forwardRef((props, ref) => {
                 value={cycleName}
                 onChange={(e) => setCycleName(e.target.value)}
                 ref={inputRef}
-                className="px-6 py-3 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-80 text-center"
+                className="px-5 py-2.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white/20 transition-all duration-200 w-72 text-center text-sm"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter' && cycleName.trim()) {
                     startFocus();
@@ -520,10 +542,10 @@ const Timer = forwardRef((props, ref) => {
               />
             )}
             
-            <div className="flex gap-4">
+            <div className="flex gap-3">
               <button
                 onClick={handleStartFocus}
-                className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
+                className="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 text-sm"
               >
                 <span className="text-xl">▶</span>
                 Iniciar Foco
@@ -535,7 +557,7 @@ const Timer = forwardRef((props, ref) => {
         {isRunning && (
           <button
             onClick={pauseTimer}
-            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
+            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 text-sm"
           >
             <span className="text-xl">⏸</span>
             Pausar
@@ -543,10 +565,10 @@ const Timer = forwardRef((props, ref) => {
         )}
 
         {isPaused && (
-          <div className="flex gap-4">
+          <div className="flex gap-3">
             <button
               onClick={resumeTimer}
-              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium py-4 px-8 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2"
+              className="bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 text-sm"
             >
               <span className="text-xl">▶</span>
               Continuar
@@ -554,7 +576,7 @@ const Timer = forwardRef((props, ref) => {
             
             <button
               onClick={resetTimer}
-              className="bg-red-500/20 backdrop-blur-sm hover:bg-red-500/30 text-red-300 font-medium py-4 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-red-300/20 flex items-center gap-2"
+              className="bg-red-500/20 backdrop-blur-sm hover:bg-red-500/30 text-red-300 font-medium py-3 px-5 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-red-300/20 flex items-center gap-2 text-sm"
             >
               <span className="text-xl">↺</span>
               Reiniciar
@@ -564,7 +586,13 @@ const Timer = forwardRef((props, ref) => {
 
         {/* Ações Rápidas */}
         {isRunning && currentPhase === 'focus' && (
-          <div className="flex gap-3 mt-4">
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
+            <button
+              onClick={completeTaskEarly}
+              className="px-5 py-2.5 bg-emerald-500/30 hover:bg-emerald-500/50 rounded-full text-emerald-200 font-medium transition-all duration-200 text-sm flex items-center gap-2 border border-emerald-400/30"
+            >
+              ✓ Concluir tarefa
+            </button>
             <button
               onClick={() => setShowNoteModal(true)}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
@@ -584,7 +612,7 @@ const Timer = forwardRef((props, ref) => {
         {!isRunning && !isPaused && (
           <button
             onClick={() => setShowRepoSelector(true)}
-            className="mt-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white/80 text-sm flex items-center gap-2 border border-white/10"
+            className="mt-1 px-3 py-1.5 bg-white/5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white/80 text-xs flex items-center gap-2 border border-white/10"
           >
             {selectedRepo ? `📂 ${selectedRepo.full_name || selectedRepo.repo}` : '🔗 Selecionar projeto GitHub'}
           </button>

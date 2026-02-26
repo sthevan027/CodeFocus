@@ -98,10 +98,10 @@ export default function OnboardingModal({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-white font-semibold">
-                  {settingsClicked ? '✅' : '1.'} Configurar tempos
+                  {settingsClicked ? '✅' : '1.'} Configurações
                 </p>
                 <p className="text-white/60 text-sm">
-                  Ajuste foco/pausas e automações para seu ritmo.
+                  Ajuste tempos de foco, pausas e notificações no menu lateral.
                 </p>
               </div>
               <button
@@ -114,7 +114,7 @@ export default function OnboardingModal({
                 }}
                 className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-colors"
               >
-                Configurar
+                Ir para Configurações
               </button>
             </div>
           </div>
@@ -124,17 +124,17 @@ export default function OnboardingModal({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-white font-semibold">
-                  {hasTags ? '✅' : '2.'} Criar 1ª tag/projeto
+                  {hasTags ? '✅' : '2.'} Tarefas
                 </p>
                 <p className="text-white/60 text-sm">
-                  Ex.: “frontend”, “backend”, “bugfix” ou nome do projeto.
+                  Crie tags para organizar seus focos (ex.: projeto, tipo de atividade).
                 </p>
               </div>
               <button
                 onClick={onGoToTags}
                 className="shrink-0 rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition-colors"
               >
-                Abrir tags
+                Ir para Tarefas
               </button>
             </div>
           </div>
@@ -144,17 +144,17 @@ export default function OnboardingModal({
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-white font-semibold">
-                  {hasFirstCycle ? '✅' : '3.'} Iniciar 1º ciclo
+                  {hasFirstCycle ? '✅' : '3.'} Timer
                 </p>
                 <p className="text-white/60 text-sm">
-                  Dê um nome para o foco e aperte “Iniciar Foco”.
+                  Inicie seu primeiro ciclo: dê um nome ao foco e clique em "Iniciar Foco".
                 </p>
               </div>
               <button
                 onClick={onGoToTimer}
                 className="shrink-0 rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition-colors"
               >
-                Ir para timer
+                Ir para Timer
               </button>
             </div>
           </div>

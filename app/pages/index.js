@@ -135,28 +135,33 @@ export default function Home() {
     )
   }
 
-  const renderContent = () => {
-    switch (activeView) {
-      case 'timer':
-        return <Timer ref={timerRef} />
-      case 'dashboard':
-        return <Dashboard onClose={() => setActiveView('timer')} />
-      case 'tasks':
-        return <TagManager />
-      case 'settings':
-        return (
-          <div className="min-h-screen animate-fade-in">
-            <h1 className="text-4xl font-bold text-white mb-6">Configurações</h1>
-            <SettingsScreen isOpen={true} onClose={() => setActiveView('timer')} asPage={true} />
-          </div>
-        )
-      default:
-        return <Timer ref={timerRef} />
-    }
-  }
+  // Timer sempre montado para continuar rodando ao mudar de tela (display:none só esconde)
+  const renderContent = () => (
+    <>
+      <div style={{ display: activeView === 'timer' ? 'flex' : 'none' }} className={activeView === 'timer' ? 'flex-1 min-h-0 flex flex-col' : ''}>
+        <Timer ref={timerRef} />
+      </div>
+      {activeView === 'dashboard' && (
+        <div className="animate-fade-in">
+          <Dashboard onClose={() => setActiveView('timer')} />
+        </div>
+      )}
+      {activeView === 'tasks' && (
+        <div className="animate-fade-in">
+          <TagManager />
+        </div>
+      )}
+      {activeView === 'settings' && (
+        <div className="min-h-screen animate-fade-in">
+          <h1 className="text-4xl font-bold text-white mb-6">Configurações</h1>
+          <SettingsScreen isOpen={true} onClose={() => setActiveView('timer')} asPage={true} />
+        </div>
+      )}
+    </>
+  )
 
   return (
-    <div className="min-h-screen flex">
+    <div className="h-screen flex overflow-hidden">
       {/* Navigation Sidebar */}
       <Navigation 
         activeView={activeView}
@@ -165,8 +170,9 @@ export default function Home() {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 ml-20 overflow-hidden">
-        <div className="container mx-auto px-6 py-8">
+      <main className="flex-1 ml-20 min-h-0 flex flex-col overflow-hidden">
+        <div className={`flex-1 min-h-0 flex flex-col ${activeView === 'timer' ? 'overflow-hidden py-2' : 'overflow-y-auto py-8'}`}>
+          <div className={`container mx-auto px-6 ${activeView === 'timer' ? 'flex-1 min-h-0 flex flex-col' : 'py-0'}`}>
           {offlineModeEnabled && (
             <div className="mb-6 rounded-xl border border-yellow-400/30 bg-yellow-500/10 px-4 py-3 text-yellow-200">
               <p className="text-sm">
@@ -176,6 +182,7 @@ export default function Home() {
             </div>
           )}
           {renderContent()}
+          </div>
         </div>
       </main>
 
