@@ -555,13 +555,24 @@ const Timer = forwardRef((props, ref) => {
         )}
 
         {isRunning && (
-          <button
-            onClick={pauseTimer}
-            className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 text-sm"
-          >
-            <span className="text-xl">⏸</span>
-            Pausar
-          </button>
+          <div className="flex gap-3 items-center">
+            <button
+              onClick={pauseTimer}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white font-medium py-3 px-6 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-2 text-sm"
+            >
+              <span className="text-xl">⏸</span>
+              Pausar
+            </button>
+            {currentPhase === 'focus' && (
+              <button
+                onClick={completeTaskEarly}
+                className="bg-emerald-500/30 hover:bg-emerald-500/50 text-emerald-200 font-medium py-3 px-5 rounded-full transition-all duration-200 transform hover:scale-105 active:scale-95 border border-emerald-400/30 flex items-center gap-2 text-sm shadow-lg"
+              >
+                <span className="text-lg">✓</span>
+                Concluir tarefa
+              </button>
+            )}
+          </div>
         )}
 
         {isPaused && (
@@ -587,12 +598,6 @@ const Timer = forwardRef((props, ref) => {
         {/* Ações Rápidas */}
         {isRunning && currentPhase === 'focus' && (
           <div className="flex flex-wrap justify-center gap-2 mt-2">
-            <button
-              onClick={completeTaskEarly}
-              className="px-5 py-2.5 bg-emerald-500/30 hover:bg-emerald-500/50 rounded-full text-emerald-200 font-medium transition-all duration-200 text-sm flex items-center gap-2 border border-emerald-400/30"
-            >
-              ✓ Concluir tarefa
-            </button>
             <button
               onClick={() => setShowNoteModal(true)}
               className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white/80 hover:text-white transition-all duration-200 text-sm flex items-center gap-2"
