@@ -5,8 +5,10 @@ import { getRequestId, log } from '../../../lib/logger'
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
+const rawAppUrl = process.env.NEXT_PUBLIC_APP_URL ||
   (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+// Garantir apenas a origem (evita loop se NEXT_PUBLIC_APP_URL tiver path)
+const APP_URL = (rawAppUrl || '').replace(/\/api\/github\/callback.*$/i, '').replace(/\/+$/, '') || 'http://localhost:3000'
 
 export default async function handler(req, res) {
   const requestId = getRequestId(req)
