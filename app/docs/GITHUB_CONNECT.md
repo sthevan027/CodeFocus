@@ -29,4 +29,7 @@ GITHUB_CLIENT_ID=seu-client-id
 GITHUB_CLIENT_SECRET=seu-client-secret
 ```
 
-Se `NEXT_PUBLIC_APP_URL` não estiver definido, o app usa `http://localhost:3000` como padrão.
+### Produção (Vercel)
+
+- **Na Vercel**: O app usa `VERCEL_URL` automaticamente (ex.: `https://code-focus-beta.vercel.app`). Não é obrigatório definir `NEXT_PUBLIC_APP_URL`.
+- **Domínio customizado**: Se usar domínio próprio, defina `NEXT_PUBLIC_APP_URL=https://seu-dominio.com` nas variáveis de ambiente da Vercel.

@@ -2,7 +2,8 @@
 import { requireAuth } from '../../../lib/auth'
 
 const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
