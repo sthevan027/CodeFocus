@@ -93,10 +93,12 @@ A aplicação estará disponível em: http://localhost:3000
 
 ### Tabelas Criadas
 
-- **users**: Usuários do sistema
+- **profiles**: Perfis de usuário
 - **user_settings**: Configurações do usuário
 - **cycles**: Ciclos Pomodoro
 - **reports**: Relatórios de produtividade
+- **tags**: Tags do usuário (gerenciador de tarefas)
+- **tasks**: Tarefas do usuário (gerenciador de tarefas)
 
 ### Row Level Security (RLS)
 
@@ -144,6 +146,17 @@ O sistema usa **Supabase Auth** com cookies httpOnly. Suporta:
 - `GET /api/reports` - Listar relatórios
 - `GET /api/reports/[id]` - Obter relatório
 - `DELETE /api/reports/[id]` - Deletar relatório
+
+### Tags
+- `GET /api/tags` - Listar tags
+- `POST /api/tags` - Criar tag
+- `DELETE /api/tags/[id]` - Deletar tag
+
+### Tarefas
+- `GET /api/tasks` - Listar tarefas
+- `POST /api/tasks` - Criar tarefa
+- `PUT /api/tasks/[id]` - Atualizar tarefa
+- `DELETE /api/tasks/[id]` - Deletar tarefa
 
 ### GitHub (Integração)
 - `GET /api/github/repos` - Listar repositórios do usuário

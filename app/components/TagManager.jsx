@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import apiService from '../services/apiService';
 
 const TagManager = () => {
   const { user } = useAuth();
@@ -9,115 +10,190 @@ const TagManager = () => {
   const [tasks, setTasks] = useState([]);
   const [newTask, setNewTask] = useState('');
   const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Carregar tags e tarefas do localStorage
+  // Carregar tags e tarefas da API (Supabase)
+  const loadData = useCallback(async () => {
+    if (!user?.id) {
+      setLoading(false);
+      setTags([]);
+      setTasks([]);
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const [tagsRes, tasksRes] = await Promise.all([
+        apiService.getTags(),
+        apiService.getTasks()
+      ]);
+      setTags(Array.isArray(tagsRes) ? tagsRes : []);
+      setTasks(Array.isArray(tasksRes) ? tasksRes : []);
+    } catch (err) {
+      console.error('Erro ao carregar dados:', err);
+      setError(err.message || 'Erro ao carregar dados');
+      setTags([]);
+      setTasks([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
-    const userKey = user ? `codefocus-tags-${user.id}` : 'codefocus-tags';
-    const tasksKey = user ? `codefocus-tasks-${user.id}` : 'codefocus-tasks';
-    
-    const savedTags = JSON.parse(localStorage.getItem(userKey) || '[]');
-    const savedTasks = JSON.parse(localStorage.getItem(tasksKey) || '[]');
-    
-    setTags(savedTags);
-    setTasks(savedTasks);
-  }, [user]);
-
-  // Salvar tags
-  const saveTags = (newTags) => {
-    const userKey = user ? `codefocus-tags-${user.id}` : 'codefocus-tags';
-    localStorage.setItem(userKey, JSON.stringify(newTags));
-    setTags(newTags);
-  };
-
-  // Salvar tarefas
-  const saveTasks = (newTasks) => {
-    const tasksKey = user ? `codefocus-tasks-${user.id}` : 'codefocus-tasks';
-    localStorage.setItem(tasksKey, JSON.stringify(newTasks));
-    setTasks(newTasks);
-  };
+    loadData();
+  }, [loadData]);
 
   // Adicionar nova tag
-  const addTag = () => {
-    if (newTag.trim() && !tags.includes(newTag.trim())) {
-      const updatedTags = [...tags, newTag.trim()];
-      saveTags(updatedTags);
+  const addTag = async () => {
+    if (!newTag.trim() || !user?.id) return;
+    if (tags.some((t) => (typeof t === 'string' ? t : t.name) === newTag.trim())) return;
+    try {
+      const created = await apiService.createTag(newTag.trim());
+      setTags((prev) => [...prev, created]);
       setNewTag('');
       if (window.showToast) {
         window.showToast(`Tag "${newTag}" criada com sucesso!`, 'success');
+      }
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao criar tag', 'error');
       }
     }
   };
 
   // Remover tag
-  const removeTag = (tagToRemove) => {
-    const updatedTags = tags.filter(tag => tag !== tagToRemove);
-    saveTags(updatedTags);
-    setSelectedTags(selectedTags.filter(tag => tag !== tagToRemove));
-    if (window.showToast) {
-      window.showToast(`Tag "${tagToRemove}" removida`, 'info');
+  const removeTag = async (tagToRemove) => {
+    const tagObj = tags.find((t) => (typeof t === 'string' ? t : t.name) === tagToRemove);
+    const tagId = tagObj?.id;
+    if (!tagId) return;
+    try {
+      await apiService.deleteTag(tagId);
+      setTags((prev) => prev.filter((t) => (typeof t === 'string' ? t : t.name) !== tagToRemove));
+      setSelectedTags((prev) => prev.filter((t) => t !== tagToRemove));
+      if (window.showToast) {
+        window.showToast(`Tag "${tagToRemove}" removida`, 'info');
+      }
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao remover tag', 'error');
+      }
     }
   };
 
   // Adicionar nova tarefa
-  const addTask = () => {
-    if (newTask.trim()) {
-      const task = {
-        id: Date.now(),
+  const addTask = async () => {
+    if (!newTask.trim() || !user?.id) return;
+    try {
+      const created = await apiService.createTask({
         text: newTask.trim(),
-        tags: [...selectedTags],
+        tags: selectedTags,
         completed: false,
-        createdAt: new Date().toISOString(),
-        pomodoroCount: 0
-      };
-      const updatedTasks = [task, ...tasks];
-      saveTasks(updatedTasks);
+        pomodoro_count: 0
+      });
+      setTasks((prev) => [{ ...created, tags: created.tags || [] }, ...prev]);
       setNewTask('');
       setSelectedTags([]);
       if (window.showToast) {
         window.showToast('Tarefa adicionada com sucesso!', 'success');
       }
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao adicionar tarefa', 'error');
+      }
     }
   };
 
   // Toggle tarefa completa
-  const toggleTask = (taskId) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, completed: !task.completed } : task
-    );
-    saveTasks(updatedTasks);
+  const toggleTask = async (taskId) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    try {
+      const updated = await apiService.updateTask(taskId, {
+        completed: !task.completed
+      });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, ...updated } : t))
+      );
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao atualizar tarefa', 'error');
+      }
+    }
   };
 
   // Remover tarefa
-  const removeTask = (taskId) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    saveTasks(updatedTasks);
-    if (window.showToast) {
-      window.showToast('Tarefa removida', 'info');
+  const removeTask = async (taskId) => {
+    try {
+      await apiService.deleteTask(taskId);
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      if (window.showToast) {
+        window.showToast('Tarefa removida', 'info');
+      }
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao remover tarefa', 'error');
+      }
     }
   };
 
   // Incrementar contador Pomodoro
-  const incrementPomodoro = (taskId) => {
-    const updatedTasks = tasks.map(task => 
-      task.id === taskId ? { ...task, pomodoroCount: task.pomodoroCount + 1 } : task
-    );
-    saveTasks(updatedTasks);
+  const incrementPomodoro = async (taskId) => {
+    const task = tasks.find((t) => t.id === taskId);
+    if (!task) return;
+    const count = (task.pomodoroCount ?? task.pomodoro_count ?? 0) + 1;
+    try {
+      const updated = await apiService.updateTask(taskId, {
+        pomodoro_count: count
+      });
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, pomodoroCount: count, ...updated } : t))
+      );
+    } catch (err) {
+      if (window.showToast) {
+        window.showToast(err.message || 'Erro ao atualizar tarefa', 'error');
+      }
+    }
   };
 
   // Filtrar tarefas
-  const filteredTasks = tasks.filter(task => {
-    if (filter === 'active') return !task.completed;
-    if (filter === 'completed') return task.completed;
+  const filteredTasks = tasks.filter((task) => {
+    const completed = task.completed ?? false;
+    if (filter === 'active') return !completed;
+    if (filter === 'completed') return completed;
     return true;
   });
 
   // Estatísticas
   const stats = {
     total: tasks.length,
-    completed: tasks.filter(t => t.completed).length,
-    active: tasks.filter(t => !t.completed).length,
-    totalPomodoros: tasks.reduce((sum, t) => sum + t.pomodoroCount, 0)
+    completed: tasks.filter((t) => t.completed).length,
+    active: tasks.filter((t) => !t.completed).length,
+    totalPomodoros: tasks.reduce((sum, t) => sum + (t.pomodoroCount ?? t.pomodoro_count ?? 0), 0)
   };
+
+  const tagNames = tags.map((t) => (typeof t === 'string' ? t : t.name));
+
+  if (!user?.id) {
+    return (
+      <div className="min-h-screen animate-fade-in flex flex-col items-center justify-center">
+        <h1 className="text-4xl font-bold text-white mb-2">Gerenciador de Tarefas</h1>
+        <p className="text-white/60 text-lg mb-6">Organize suas tarefas e acompanhe seu progresso</p>
+        <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10 text-center max-w-md">
+          <p className="text-white/80 text-lg">Faça login para gerenciar suas tarefas e tags.</p>
+          <p className="text-white/50 mt-2">Os dados serão sincronizados na nuvem (Supabase).</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen animate-fade-in flex items-center justify-center">
+        <p className="text-white/60">Carregando...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen animate-fade-in">
@@ -126,6 +202,12 @@ const TagManager = () => {
         <h1 className="text-4xl font-bold text-white mb-2">Gerenciador de Tarefas</h1>
         <p className="text-white/60 text-lg">Organize suas tarefas e acompanhe seu progresso</p>
       </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-500/20 border border-red-500/50 rounded-lg text-red-300">
+          {error}
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -152,8 +234,7 @@ const TagManager = () => {
         <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
           <span>🏷️</span> Gerenciar Tags
         </h2>
-        
-        {/* Add Tag Input */}
+
         <div className="flex gap-2 mb-4">
           <input
             type="text"
@@ -171,9 +252,8 @@ const TagManager = () => {
           </button>
         </div>
 
-        {/* Tags List */}
         <div className="flex flex-wrap gap-2">
-          {tags.map((tag) => (
+          {tagNames.map((tag) => (
             <div
               key={tag}
               className={`px-3 py-1 rounded-full text-sm transition-all duration-200 cursor-pointer flex items-center gap-2 ${
@@ -183,9 +263,9 @@ const TagManager = () => {
               }`}
               onClick={() => {
                 if (selectedTags.includes(tag)) {
-                  setSelectedTags(selectedTags.filter(t => t !== tag));
+                  setSelectedTags((prev) => prev.filter((t) => t !== tag));
                 } else {
-                  setSelectedTags([...selectedTags, tag]);
+                  setSelectedTags((prev) => [...prev, tag]);
                 }
               }}
             >
@@ -209,7 +289,7 @@ const TagManager = () => {
         <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
           <span>➕</span> Nova Tarefa
         </h2>
-        
+
         <div className="space-y-4">
           <input
             type="text"
@@ -219,20 +299,23 @@ const TagManager = () => {
             placeholder="O que você precisa fazer?"
             className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          
+
           {selectedTags.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-white/60 text-sm">Tags selecionadas:</span>
               <div className="flex gap-2">
-                {selectedTags.map(tag => (
-                  <span key={tag} className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm">
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2 py-1 bg-blue-600/20 text-blue-300 rounded-full text-sm"
+                  >
                     {tag}
                   </span>
                 ))}
               </div>
             </div>
           )}
-          
+
           <button
             onClick={addTask}
             disabled={!newTask.trim()}
@@ -262,73 +345,87 @@ const TagManager = () => {
 
       {/* Tasks List */}
       <div className="space-y-3">
-        {filteredTasks.map((task) => (
-          <div
-            key={task.id}
-            className={`bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-white/20 transition-all duration-200 ${
-              task.completed ? 'opacity-60' : ''
-            }`}
-          >
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => toggleTask(task.id)}
-                className={`w-6 h-6 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
-                  task.completed
-                    ? 'bg-green-500 border-green-500'
-                    : 'border-white/40 hover:border-white'
-                }`}
-              >
-                {task.completed && <span className="text-white text-sm">✓</span>}
-              </button>
-              
-              <div className="flex-1">
-                <p className={`text-white ${task.completed ? 'line-through' : ''}`}>
-                  {task.text}
-                </p>
-                <div className="flex items-center gap-4 mt-2">
-                  {task.tags.length > 0 && (
-                    <div className="flex gap-1">
-                      {task.tags.map((tag, i) => (
-                        <span key={i} className="px-2 py-1 bg-white/10 rounded-full text-xs text-white/60">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <span className="text-white/40 text-sm">
-                    {new Date(task.createdAt).toLocaleDateString('pt-BR')}
-                  </span>
+        {filteredTasks.map((task) => {
+          const completed = task.completed ?? false;
+          const taskTags = Array.isArray(task.tags) ? task.tags : [];
+          const taskDate = task.createdAt ?? task.created_at;
+          const pomoCount = task.pomodoroCount ?? task.pomodoro_count ?? 0;
+
+          return (
+            <div
+              key={task.id}
+              className={`bg-white/5 backdrop-blur-sm rounded-xl p-4 border border-white/10 hover:border-white/20 transition-all duration-200 ${
+                completed ? 'opacity-60' : ''
+              }`}
+            >
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => toggleTask(task.id)}
+                  className={`w-6 h-6 rounded-full border-2 transition-all duration-200 flex items-center justify-center ${
+                    completed
+                      ? 'bg-green-500 border-green-500'
+                      : 'border-white/40 hover:border-white'
+                  }`}
+                >
+                  {completed && <span className="text-white text-sm">✓</span>}
+                </button>
+
+                <div className="flex-1">
+                  <p className={`text-white ${completed ? 'line-through' : ''}`}>
+                    {task.text}
+                  </p>
+                  <div className="flex items-center gap-4 mt-2">
+                    {taskTags.length > 0 && (
+                      <div className="flex gap-1">
+                        {taskTags.map((tag, i) => (
+                          <span
+                            key={i}
+                            className="px-2 py-1 bg-white/10 rounded-full text-xs text-white/60"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {taskDate && (
+                      <span className="text-white/40 text-sm">
+                        {new Date(taskDate).toLocaleDateString('pt-BR')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => incrementPomodoro(task.id)}
+                    className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors text-sm flex items-center gap-1"
+                    title="Adicionar Pomodoro"
+                  >
+                    <span>🍅</span>
+                    <span>{pomoCount}</span>
+                  </button>
+
+                  <button
+                    onClick={() => removeTask(task.id)}
+                    className="p-2 text-white/40 hover:text-red-400 transition-colors"
+                    title="Remover tarefa"
+                  >
+                    <span>🗑️</span>
+                  </button>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => incrementPomodoro(task.id)}
-                  className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors text-sm flex items-center gap-1"
-                  title="Adicionar Pomodoro"
-                >
-                  <span>🍅</span>
-                  <span>{task.pomodoroCount}</span>
-                </button>
-                
-                <button
-                  onClick={() => removeTask(task.id)}
-                  className="p-2 text-white/40 hover:text-red-400 transition-colors"
-                  title="Remover tarefa"
-                >
-                  <span>🗑️</span>
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
-        
+          );
+        })}
+
         {filteredTasks.length === 0 && (
           <div className="text-center py-12">
             <p className="text-white/40 text-lg">
-              {filter === 'completed' ? 'Nenhuma tarefa concluída ainda' : 
-               filter === 'active' ? 'Nenhuma tarefa ativa' : 
-               'Nenhuma tarefa adicionada ainda'}
+              {filter === 'completed'
+                ? 'Nenhuma tarefa concluída ainda'
+                : filter === 'active'
+                  ? 'Nenhuma tarefa ativa'
+                  : 'Nenhuma tarefa adicionada ainda'}
             </p>
           </div>
         )}
@@ -337,4 +434,4 @@ const TagManager = () => {
   );
 };
 
-export default TagManager; 
+export default TagManager;

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import apiService from '../services/apiService'
 
 const getKey = (userId, suffix) => `codefocus-onboarding-${suffix}-${userId || 'anon'}`
 const getCompletedKey = (userId) => `codefocus-onboarding-completed-${userId || 'anon'}`
@@ -25,22 +26,37 @@ export default function OnboardingModal({
   useEffect(() => {
     if (!isOpen) return
 
-    const refresh = () => {
+    const refreshTags = () => {
+      if (!userId) {
+        setHasTags(false)
+        return
+      }
+      apiService
+        .getTags()
+        .then((tags) => {
+          const arr = Array.isArray(tags) ? tags : []
+          setHasTags(arr.length > 0)
+        })
+        .catch(() => setHasTags(false))
+    }
+
+    const refreshHistory = () => {
       try {
-        const tagsKey = userId ? `codefocus-tags-${userId}` : 'codefocus-tags'
         const historyKey = userId ? `codefocus-history-${userId}` : 'codefocus-history'
-        const tags = JSON.parse(localStorage.getItem(tagsKey) || '[]')
         const history = JSON.parse(localStorage.getItem(historyKey) || '[]')
-        setHasTags(Array.isArray(tags) && tags.length > 0)
         setHasFirstCycle(Array.isArray(history) && history.some((h) => h.type === 'session'))
       } catch {
-        setHasTags(false)
         setHasFirstCycle(false)
       }
     }
 
+    const refresh = () => {
+      refreshTags()
+      refreshHistory()
+    }
+
     refresh()
-    const id = window.setInterval(refresh, 1000)
+    const id = window.setInterval(refresh, 3000)
     return () => window.clearInterval(id)
   }, [isOpen, userId])
 

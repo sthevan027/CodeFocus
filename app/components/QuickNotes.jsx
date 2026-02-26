@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
+import apiService from '../services/apiService';
 
 const colorFromString = (value) => {
   let hash = 0;
@@ -48,12 +49,17 @@ const QuickNotes = ({ onUpdate = () => {} } = {}) => {
   };
 
   const loadUserTags = () => {
-    try {
-      const savedTags = JSON.parse(localStorage.getItem(`codefocus-tags-${userId}`) || '[]');
-      setUserTags(Array.isArray(savedTags) ? savedTags : []);
-    } catch (error) {
-      console.error('Erro ao carregar tags:', error);
+    if (!userId) {
+      setUserTags([]);
+      return;
     }
+    apiService
+      .getTags()
+      .then((tags) => {
+        const names = Array.isArray(tags) ? tags.map((t) => (typeof t === 'string' ? t : t.name)) : [];
+        setUserTags(names);
+      })
+      .catch(() => setUserTags([]));
   };
 
   const saveNotes = (newNotes) => {

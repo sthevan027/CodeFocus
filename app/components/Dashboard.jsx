@@ -19,7 +19,8 @@ const Dashboard = ({ onClose }) => {
     weeklyProgress: 0,
     weeklyGoal: 40,
     tags: {},
-    recentActivities: []
+    recentActivities: [],
+    recentCommits: []
   });
 
   // Função para carregar dados do dashboard
@@ -42,6 +43,10 @@ const Dashboard = ({ onClose }) => {
       
       const todayFocus = todaySessions.reduce((total, session) => total + (session.duration || 0), 0);
       const weekFocus = weekSessions.reduce((total, session) => total + (session.duration || 0), 0);
+
+      // Carregar commits registrados (salvos pelo GitCommitModal)
+      const commitsKey = user ? `codefocus-commits-${user.id}` : 'codefocus-commits';
+      const commits = JSON.parse(localStorage.getItem(commitsKey) || '[]');
       
       // Calcular produtividade
       const focusSessions = todaySessions.filter(s => s.phase === 'focus');
@@ -80,7 +85,8 @@ const Dashboard = ({ onClose }) => {
         weeklyProgress,
         weeklyGoal: 40,
         tags,
-        recentActivities: history.slice(0, 20) // Últimas 20 atividades
+        recentActivities: history.slice(0, 20), // Últimas 20 atividades
+        recentCommits: Array.isArray(commits) ? commits.slice(0, 15) : [] // Últimos 15 commits
       });
       
     } catch (error) {
@@ -242,6 +248,42 @@ const Dashboard = ({ onClose }) => {
                             ))}
                           </div>
                         )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            {/* Commits Registrados */}
+            <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-8 border border-white/10">
+              <h3 className="text-2xl font-semibold text-white mb-6 flex items-center gap-2">
+                <span>💾</span> Commits Registrados
+              </h3>
+              <div className="space-y-3 max-h-80 overflow-y-auto scrollbar-hide">
+                {stats.recentCommits.length === 0 ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-center">
+                    <p className="text-white font-medium mb-2">Nenhum commit registrado</p>
+                    <p className="text-white/50 text-sm">
+                      Ao finalizar um ciclo de foco (ou antes, com &quot;Salvar progresso&quot;), registre o commit para acompanhar aqui.
+                    </p>
+                  </div>
+                ) : (
+                  stats.recentCommits.map((commit) => (
+                    <div
+                      key={commit.id}
+                      className="flex items-start gap-4 p-4 bg-white/5 rounded-lg hover:bg-white/10 transition-all duration-200"
+                    >
+                      <div className="w-8 h-8 rounded-full bg-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <span className="text-blue-300">📝</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{commit.message}</p>
+                        <p className="text-white/50 text-sm mt-1">
+                          {commit.cycleName && <span className="text-white/60">{commit.cycleName} • </span>}
+                          {new Date(commit.timestamp).toLocaleDateString('pt-BR')} às{' '}
+                          {new Date(commit.timestamp).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
                   ))

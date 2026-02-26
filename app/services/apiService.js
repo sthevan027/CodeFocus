@@ -217,6 +217,52 @@ class ApiService {
   getConnectGithubUrl() {
     return `${this.baseURL}/github/auth`
   }
+
+  // ========== TAGS ==========
+  async getTags() {
+    return this.request('/tags/')
+  }
+
+  async createTag(name) {
+    return this.request('/tags/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+  }
+
+  async deleteTag(tagId) {
+    return this.request(`/tags/${tagId}`, {
+      method: 'DELETE',
+    })
+  }
+
+  // ========== TASKS ==========
+  async getTasks() {
+    return this.request('/tasks/')
+  }
+
+  async createTask(taskData) {
+    return this.request('/tasks/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taskData),
+    })
+  }
+
+  async updateTask(taskId, taskData) {
+    return this.request(`/tasks/${taskId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(taskData),
+    })
+  }
+
+  async deleteTask(taskId) {
+    return this.request(`/tasks/${taskId}`, {
+      method: 'DELETE',
+    })
+  }
 }
 
 // Instância global

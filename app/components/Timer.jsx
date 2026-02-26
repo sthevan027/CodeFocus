@@ -57,6 +57,33 @@ const Timer = forwardRef((props, ref) => {
   const [sessionNote, setSessionNote] = useState('');
   const [availableTags, setAvailableTags] = useState([]);
   const inputRef = useRef(null);
+  const hasHandledCycleCompleteRef = useRef(false);
+  const [todayStats, setTodayStats] = useState({ sessions: 0, minutes: 0 });
+
+  // Calcular Quick Stats (Sessões hoje / Tempo total) - atualiza quando isRunning muda ou user muda
+  const refreshTodayStats = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const userKey = user ? `codefocus-history-${user.id}` : 'codefocus-history';
+      const raw = localStorage.getItem(userKey) || '[]';
+      const history = JSON.parse(raw);
+      const today = new Date().toDateString();
+      const todaySessions = Array.isArray(history)
+        ? history.filter((s) => s?.type === 'session' && new Date(s.timestamp).toDateString() === today)
+        : [];
+      const totalSeconds = todaySessions.reduce((t, s) => t + (s.duration || 0), 0);
+      setTodayStats({
+        sessions: todaySessions.length,
+        minutes: Math.round(totalSeconds / 60),
+      });
+    } catch {
+      setTodayStats({ sessions: 0, minutes: 0 });
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refreshTodayStats();
+  }, [refreshTodayStats, isRunning]);
 
   // Atualizar settings quando localStorage mudar (SettingsScreen)
   useEffect(() => {
@@ -69,16 +96,20 @@ const Timer = forwardRef((props, ref) => {
     return () => window.removeEventListener('storage', onStorage);
   }, []);
 
-  // Carregar tags do usuário (para usar na nota/sessão)
+  // Carregar tags do usuário via API (Supabase)
   useEffect(() => {
-    try {
-      const key = user ? `codefocus-tags-${user.id}` : 'codefocus-tags';
-      const saved = JSON.parse(localStorage.getItem(key) || '[]');
-      setAvailableTags(Array.isArray(saved) ? saved : []);
-    } catch {
+    if (!user?.id) {
       setAvailableTags([]);
+      return;
     }
-  }, [user]);
+    apiService
+      .getTags()
+      .then((tags) => {
+        const names = Array.isArray(tags) ? tags.map((t) => (typeof t === 'string' ? t : t.name)) : [];
+        setAvailableTags(names);
+      })
+      .catch(() => setAvailableTags([]));
+  }, [user?.id]);
 
   // Carregar repositório selecionado do backend
   useEffect(() => {
@@ -178,18 +209,21 @@ const Timer = forwardRef((props, ref) => {
     let interval = null;
     
     if (isRunning && timeLeft > 0) {
+      hasHandledCycleCompleteRef.current = false; // Reset para próxima sessão
       interval = setInterval(() => {
-        setTimeLeft(timeLeft - 1);
+        setTimeLeft(prev => prev - 1);
       }, 1000);
-    } else if (timeLeft === 0) {
+    } else if (timeLeft === 0 && !hasHandledCycleCompleteRef.current) {
+      hasHandledCycleCompleteRef.current = true; // Evitar re-execução
       setIsRunning(false);
       notificationManager.notifyCycleComplete(currentPhase);
       
       // Calcular duração da sessão
-      const sessionDuration = getPhaseDuration(currentPhase) - timeLeft;
+      const sessionDuration = getPhaseDuration(currentPhase);
       
       // Salvar sessão
       saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+      refreshTodayStats(); // Atualizar Quick Stats imediatamente após salvar
 
       // Contabilizar ciclos de foco para decidir pausa curta/longa
       let nextBreakPhase = 'shortBreak';
@@ -202,23 +236,19 @@ const Timer = forwardRef((props, ref) => {
         }
       }
       
-      // Mostrar modal de nota se for sessão de foco
+      // Mostrar modal de nota e Git se for sessão de foco
       if (currentPhase === 'focus') {
         setShowNoteModal(true);
         setPendingBreakPhase(nextBreakPhase);
         if (settings.auto_start_breaks) {
           setPendingAutoStartPhase(nextBreakPhase);
         }
+        // Sempre mostrar modal Git ao finalizar foco (permitir registrar commit e iniciar descanso)
+        setShowGitModal(true);
       }
       
       // Limpar dados da sessão
       setSelectedTags([]);
-      // nota é preenchida no modal; limpar quando fechar/salvar
-      
-      // Mostrar modal Git se for um ciclo de foco
-      if (currentPhase === 'focus' && cycleName) {
-        setShowGitModal(true);
-      }
 
       // Auto-start (pausas/pomodoros) sem modal de nota
       if (currentPhase !== 'focus') {
@@ -230,7 +260,7 @@ const Timer = forwardRef((props, ref) => {
 
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRunning, timeLeft, currentPhase, cycleName, selectedTags, sessionNote, getFocusCount, setFocusCount, settings]);
+  }, [isRunning, timeLeft, currentPhase, cycleName, selectedTags, sessionNote, getFocusCount, setFocusCount, settings, refreshTodayStats]);
 
   // Obter duração da fase atual
   const getPhaseDuration = (phase) => {
@@ -460,18 +490,11 @@ const Timer = forwardRef((props, ref) => {
         <div className="flex justify-center gap-8 mb-8">
           <div className="text-center">
             <p className="text-white/60 text-sm">Sessões hoje</p>
-            <p className="text-2xl font-semibold text-white">
-              {JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
-                .filter(s => s.type === 'session' && new Date(s.timestamp).toDateString() === new Date().toDateString()).length}
-            </p>
+            <p className="text-2xl font-semibold text-white">{todayStats.sessions}</p>
           </div>
           <div className="text-center">
             <p className="text-white/60 text-sm">Tempo total</p>
-            <p className="text-2xl font-semibold text-white">
-              {Math.round(JSON.parse(localStorage.getItem(user ? `codefocus-history-${user.id}` : 'codefocus-history') || '[]')
-                .filter(s => s.type === 'session' && new Date(s.timestamp).toDateString() === new Date().toDateString())
-                .reduce((total, s) => total + (s.duration || 0), 0) / 60)}min
-            </p>
+            <p className="text-2xl font-semibold text-white">{todayStats.minutes}min</p>
           </div>
         </div>
       </div>
@@ -572,31 +595,6 @@ const Timer = forwardRef((props, ref) => {
 
       {/* Ações rápidas de pausas removidas para manter apenas o campo e iniciar */}
 
-      {/* Git Commit Modal - ao confirmar commit: timer já parou, inicia descanso + notificação */}
-      <GitCommitModal
-        isOpen={showGitModal}
-        onClose={() => {
-          setShowGitModal(false);
-          if (pendingBreakPhase) {
-            if (pendingBreakPhase === 'shortBreak') startShortBreak();
-            else if (pendingBreakPhase === 'longBreak') startLongBreak();
-            setPendingBreakPhase(null);
-            notificationManager.notifyPauseStarted(pendingBreakPhase);
-          }
-        }}
-        cycleName={cycleName}
-        onCommit={(result) => {
-          setShowGitModal(false);
-          notificationManager.showToast('Commit registrado!', 'Hora do descanso.', 'success');
-          if (pendingBreakPhase) {
-            if (pendingBreakPhase === 'shortBreak') startShortBreak();
-            else if (pendingBreakPhase === 'longBreak') startLongBreak();
-            notificationManager.notifyPauseStarted(pendingBreakPhase);
-            setPendingBreakPhase(null);
-          }
-        }}
-      />
-
       {/* Seletor de repositório GitHub */}
       <RepoSelector
         isOpen={showRepoSelector}
@@ -661,13 +659,20 @@ const Timer = forwardRef((props, ref) => {
                 <button
                   onClick={() => {
                     setShowNoteModal(false);
+                    setShowGitModal(false); // Fechar modal Git para não bloquear o descanso
                     setSessionNote('');
                     setSelectedTags([]);
-
-                    if (pendingAutoStartPhase === 'shortBreak') startShortBreak();
-                    if (pendingAutoStartPhase === 'longBreak') startLongBreak();
-                    if (pendingAutoStartPhase === 'focus') startFocus();
                     setPendingAutoStartPhase(null);
+                    // Iniciar descanso ao fechar (usar pendingBreakPhase como fonte da verdade)
+                    if (pendingBreakPhase === 'shortBreak') {
+                      startShortBreak();
+                      setPendingBreakPhase(null);
+                    } else if (pendingBreakPhase === 'longBreak') {
+                      startLongBreak();
+                      setPendingBreakPhase(null);
+                    } else if (pendingAutoStartPhase === 'focus') {
+                      startFocus();
+                    }
                   }}
                   className="flex-1 px-4 py-2 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors"
                 >
@@ -693,13 +698,20 @@ const Timer = forwardRef((props, ref) => {
                     }
                     
                     setShowNoteModal(false);
+                    setShowGitModal(false); // Fechar modal Git para não bloquear o descanso
                     setSessionNote('');
                     setSelectedTags([]);
-
-                    if (pendingAutoStartPhase === 'shortBreak') startShortBreak();
-                    if (pendingAutoStartPhase === 'longBreak') startLongBreak();
-                    if (pendingAutoStartPhase === 'focus') startFocus();
                     setPendingAutoStartPhase(null);
+                    // Iniciar descanso ao salvar (usar pendingBreakPhase como fonte da verdade)
+                    if (pendingBreakPhase === 'shortBreak') {
+                      startShortBreak();
+                      setPendingBreakPhase(null);
+                    } else if (pendingBreakPhase === 'longBreak') {
+                      startLongBreak();
+                      setPendingBreakPhase(null);
+                    } else if (pendingAutoStartPhase === 'focus') {
+                      startFocus();
+                    }
                   }}
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
@@ -711,7 +723,50 @@ const Timer = forwardRef((props, ref) => {
         </div>
       )}
 
-
+      {/* Git Commit Modal - renderizado por último para ficar no topo; ao confirmar commit inicia descanso */}
+      <GitCommitModal
+        isOpen={showGitModal}
+        userId={user?.id}
+        onClose={() => {
+          setShowGitModal(false);
+          setShowNoteModal(false);
+          if (pendingBreakPhase) {
+            if (pendingBreakPhase === 'shortBreak') startShortBreak();
+            else if (pendingBreakPhase === 'longBreak') startLongBreak();
+            setPendingBreakPhase(null);
+            notificationManager.notifyPauseStarted(pendingBreakPhase);
+          }
+        }}
+        cycleName={cycleName}
+        onCommit={(result) => {
+          setShowGitModal(false);
+          setShowNoteModal(false);
+          notificationManager.showToast('Commit registrado!', 'Hora do descanso.', 'success');
+          // Caso 1: Timer chegou a zero (pendingBreakPhase já definido)
+          if (pendingBreakPhase) {
+            if (pendingBreakPhase === 'shortBreak') startShortBreak();
+            else if (pendingBreakPhase === 'longBreak') startLongBreak();
+            notificationManager.notifyPauseStarted(pendingBreakPhase);
+            setPendingBreakPhase(null);
+            return;
+          }
+          // Caso 2: Commit antecipado (timer ainda rodando com tempo restante)
+          if (currentPhase === 'focus' && (isRunning || timeLeft > 0)) {
+            setIsRunning(false);
+            const durationWorked = Math.max(0, getPhaseDuration('focus') - timeLeft);
+            saveSession(durationWorked, 'focus', cycleName, selectedTags, sessionNote);
+            setSelectedTags([]);
+            refreshTodayStats();
+            const nextCount = getFocusCount() + 1;
+            setFocusCount(nextCount);
+            const every = settings.cycles_before_long_break || 4;
+            const nextBreakPhase = every > 0 && nextCount % every === 0 ? 'longBreak' : 'shortBreak';
+            if (nextBreakPhase === 'shortBreak') startShortBreak();
+            else startLongBreak();
+            notificationManager.notifyPauseStarted(nextBreakPhase);
+          }
+        }}
+      />
     </div>
   );
 });

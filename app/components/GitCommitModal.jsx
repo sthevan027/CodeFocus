@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const GitCommitModal = ({ isOpen, onClose, cycleName, onCommit }) => {
+const GitCommitModal = ({ isOpen, onClose, cycleName, onCommit, userId }) => {
   const [commitMessage, setCommitMessage] = useState('');
   const [isCommitting, setIsCommitting] = useState(false);
 
@@ -16,15 +16,16 @@ const GitCommitModal = ({ isOpen, onClose, cycleName, onCommit }) => {
         timestamp: new Date().toISOString()
       };
       
-      // Salvar no localStorage para histórico
-      const commits = JSON.parse(localStorage.getItem('codefocus-commits') || '[]');
+      // Salvar no localStorage para histórico (por usuário)
+      const commitsKey = userId ? `codefocus-commits-${userId}` : 'codefocus-commits';
+      const commits = JSON.parse(localStorage.getItem(commitsKey) || '[]');
       commits.push({
         id: Date.now(),
         message: commitMessage,
         cycleName: cycleName,
         timestamp: result.timestamp
       });
-      localStorage.setItem('codefocus-commits', JSON.stringify(commits));
+      localStorage.setItem(commitsKey, JSON.stringify(commits));
       
       onCommit && onCommit(result);
       onClose();

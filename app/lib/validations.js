@@ -69,6 +69,27 @@ export const settingsUpdateSchema = z.object({
   oauth_preferences: z.record(z.any()).optional()
 })
 
+// Validação de tag
+export const tagSchema = z.object({
+  name: z.string().min(1, 'Nome da tag é obrigatório').max(255)
+})
+
+// Validação de task
+export const taskSchema = z.object({
+  text: z.string().min(1, 'Texto da tarefa é obrigatório'),
+  tags: z.array(z.string()).default([]),
+  completed: z.boolean().default(false),
+  pomodoro_count: z.number().int().min(0).default(0)
+})
+
+// Validação de atualização de task
+export const taskUpdateSchema = z.object({
+  text: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  completed: z.boolean().optional(),
+  pomodoro_count: z.number().int().min(0).optional()
+})
+
 // Validação de relatório
 export const reportGenerateSchema = z.object({
   report_type: z.enum(['daily', 'weekly', 'monthly', 'custom']),

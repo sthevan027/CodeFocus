@@ -117,6 +117,31 @@ CREATE TABLE IF NOT EXISTS reports (
 CREATE INDEX IF NOT EXISTS idx_reports_user_id ON reports(user_id);
 CREATE INDEX IF NOT EXISTS idx_reports_report_date ON reports(report_date);
 
+-- Tabela de Tags
+CREATE TABLE IF NOT EXISTS tags (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_tags_user_id ON tags(user_id);
+
+-- Tabela de Tasks (tarefas)
+CREATE TABLE IF NOT EXISTS tasks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    text TEXT NOT NULL,
+    tags JSONB DEFAULT '[]',
+    completed BOOLEAN DEFAULT false,
+    pomodoro_count INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_completed ON tasks(completed);
+
 -- Função para atualizar updated_at automaticamente
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -140,6 +165,8 @@ ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_settings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cycles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tags ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
 -- Políticas RLS básicas (usuários só podem ver/editar seus próprios dados)
 
@@ -197,6 +224,36 @@ CREATE POLICY "Users can update own reports" ON reports
 
 DROP POLICY IF EXISTS "Users can delete own reports" ON reports;
 CREATE POLICY "Users can delete own reports" ON reports
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Políticas para tags
+DROP POLICY IF EXISTS "Users can view own tags" ON tags;
+CREATE POLICY "Users can view own tags" ON tags
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own tags" ON tags;
+CREATE POLICY "Users can insert own tags" ON tags
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own tags" ON tags;
+CREATE POLICY "Users can delete own tags" ON tags
+    FOR DELETE USING (auth.uid() = user_id);
+
+-- Políticas para tasks
+DROP POLICY IF EXISTS "Users can view own tasks" ON tasks;
+CREATE POLICY "Users can view own tasks" ON tasks
+    FOR SELECT USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can insert own tasks" ON tasks;
+CREATE POLICY "Users can insert own tasks" ON tasks
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can update own tasks" ON tasks;
+CREATE POLICY "Users can update own tasks" ON tasks
+    FOR UPDATE USING (auth.uid() = user_id);
+
+DROP POLICY IF EXISTS "Users can delete own tasks" ON tasks;
+CREATE POLICY "Users can delete own tasks" ON tasks
     FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
