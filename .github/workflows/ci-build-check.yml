@@ -115,35 +115,39 @@ jobs:
 
       - name: Gerar relatório de erros
         id: report
+        env:
+          LINT_STATUS: ${{ needs.lint.outputs.status }}
+          BUILD_STATUS: ${{ needs.build.outputs.status }}
+          LINT_ERRORS: ${{ needs.lint.outputs.errors }}
+          BUILD_ERRORS: ${{ needs.build.outputs.errors }}
         run: |
-          BODY="## 🐛 CI - Erros Detectados\n\n"
-          BODY+="**Branch:** \`${{ github.ref_name }}\`\n"
-          BODY+="**Commit:** \`${{ github.sha }}\`\n"
-          BODY+="**Autor:** @${{ github.actor }}\n"
-          BODY+="**Workflow:** [Ver execução](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})\n\n"
-          BODY+="---\n\n"
+          DELIM=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+          {
+            printf '## 🐛 CI - Erros Detectados\n\n'
+            printf '**Branch:** `%s`\n' '${{ github.ref_name }}'
+            printf '**Commit:** `%s`\n' '${{ github.sha }}'
+            printf '**Autor:** @%s\n' '${{ github.actor }}'
+            printf '**Workflow:** [Ver execução](%s/%s/actions/runs/%s)\n\n' '${{ github.server_url }}' '${{ github.repository }}' '${{ github.run_id }}'
+            printf '---\n\n'
 
-          if [ "${{ needs.lint.outputs.status }}" = "failure" ]; then
-            BODY+="### ❌ ESLint - Problemas de Código\n\n"
-            BODY+="\`\`\`\n${{ needs.lint.outputs.errors }}\n\`\`\`\n\n"
-          else
-            BODY+="### ✅ ESLint - OK\n\n"
-          fi
+            if [ "$LINT_STATUS" = "failure" ]; then
+              printf '### ESLint - Problemas de Código\n\n```\n%s\n```\n\n' "$LINT_ERRORS"
+            else
+              printf '### ESLint - OK\n\n'
+            fi
 
-          if [ "${{ needs.build.outputs.status }}" = "failure" ]; then
-            BODY+="### ❌ Build - Falha na Compilação\n\n"
-            BODY+="\`\`\`\n${{ needs.build.outputs.errors }}\n\`\`\`\n\n"
-          else
-            BODY+="### ✅ Build - OK\n\n"
-          fi
+            if [ "$BUILD_STATUS" = "failure" ]; then
+              printf '### Build - Falha na Compilação\n\n```\n%s\n```\n\n' "$BUILD_ERRORS"
+            else
+              printf '### Build - OK\n\n'
+            fi
 
-          BODY+="---\n"
-          BODY+="**Ação necessária:** Corrigir os erros acima antes de fazer merge.\n"
+            printf '---\n**Ação necessária:** Corrigir os erros acima antes de fazer merge.\n'
+          } > body.txt
 
-          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
-          echo "body<<$EOF" >> $GITHUB_OUTPUT
-          echo -e "$BODY" >> $GITHUB_OUTPUT
-          echo "$EOF" >> $GITHUB_OUTPUT
+          echo "body<<$DELIM" >> $GITHUB_OUTPUT
+          cat body.txt >> $GITHUB_OUTPUT
+          echo "$DELIM" >> $GITHUB_OUTPUT
 
       - name: Criar Issue de Bug
         if: github.event_name == 'push'

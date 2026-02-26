@@ -74,103 +74,97 @@ export default function OnboardingModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-gray-800 to-gray-900 shadow-2xl">
-        <div className="flex items-start justify-between gap-4 border-b border-white/10 p-6">
+    <div className="fixed bottom-6 right-6 z-50 w-full max-w-sm animate-fade-in">
+      <div className="overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br from-gray-800 to-gray-900 shadow-2xl">
+        <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-3">
           <div>
-            <h2 className="text-2xl font-bold text-white">Bem-vindo ao CodeFocus</h2>
-            <p className="mt-1 text-white/60">
-              Complete 3 passos rápidos para começar. ({completedSteps}/3)
+            <h2 className="text-sm font-bold text-white">Bem-vindo</h2>
+            <p className="text-xs text-white/60">
+              {completedSteps}/3 passos
             </p>
           </div>
           <button
             onClick={finish}
-            className="rounded-lg px-3 py-2 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="rounded-lg px-2 py-1 text-white/60 hover:bg-white/10 hover:text-white transition-colors text-sm"
             aria-label="Fechar onboarding"
           >
             ✕
           </button>
         </div>
 
-        <div className="space-y-4 p-6">
+        <div className="space-y-2 p-4">
           {/* Step 1 */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-white font-semibold">
-                  {settingsClicked ? '✅' : '1.'} Configurações
-                </p>
-                <p className="text-white/60 text-sm">
-                  Ajuste tempos de foco, pausas e notificações no menu lateral.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  try {
-                    localStorage.setItem(getKey(userId, 'settings_clicked'), 'true')
-                  } catch {}
-                  setSettingsClicked(true)
-                  onGoToSettings?.()
-                }}
-                className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 transition-colors"
-              >
-                Ir para Configurações
-              </button>
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium truncate">
+                {settingsClicked ? '✅' : '1.'} Configurações
+              </p>
+              <p className="text-white/60 text-xs truncate">
+                Ajuste tempos no menu lateral
+              </p>
             </div>
+            <button
+              onClick={() => {
+                try {
+                  localStorage.setItem(getKey(userId, 'settings_clicked'), 'true')
+                } catch {}
+                setSettingsClicked(true)
+                onGoToSettings?.()
+              }}
+              className="shrink-0 rounded-lg bg-blue-600 px-3 py-1.5 text-white text-sm hover:bg-blue-700 transition-colors"
+            >
+              Ir
+            </button>
           </div>
 
           {/* Step 2 */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-white font-semibold">
-                  {hasTags ? '✅' : '2.'} Tarefas
-                </p>
-                <p className="text-white/60 text-sm">
-                  Crie tags para organizar seus focos (ex.: projeto, tipo de atividade).
-                </p>
-              </div>
-              <button
-                onClick={onGoToTags}
-                className="shrink-0 rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition-colors"
-              >
-                Ir para Tarefas
-              </button>
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium truncate">
+                {hasTags ? '✅' : '2.'} Tarefas
+              </p>
+              <p className="text-white/60 text-xs truncate">
+                Crie tags para seus focos
+              </p>
             </div>
+            <button
+              onClick={onGoToTags}
+              className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-white text-sm hover:bg-white/20 transition-colors"
+            >
+              Ir
+            </button>
           </div>
 
           {/* Step 3 */}
-          <div className="rounded-xl border border-white/10 bg-white/5 p-4">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <p className="text-white font-semibold">
-                  {hasFirstCycle ? '✅' : '3.'} Timer
-                </p>
-                <p className="text-white/60 text-sm">
-                  Inicie seu primeiro ciclo: dê um nome ao foco e clique em "Iniciar Foco".
-                </p>
-              </div>
-              <button
-                onClick={onGoToTimer}
-                className="shrink-0 rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition-colors"
-              >
-                Ir para Timer
-              </button>
+          <div className="rounded-lg border border-white/10 bg-white/5 p-3 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-white text-sm font-medium truncate">
+                {hasFirstCycle ? '✅' : '3.'} Timer
+              </p>
+              <p className="text-white/60 text-xs truncate">
+                Inicie seu 1º ciclo
+              </p>
             </div>
+            <button
+              onClick={onGoToTimer}
+              className="shrink-0 rounded-lg bg-white/10 px-3 py-1.5 text-white text-sm hover:bg-white/20 transition-colors"
+            >
+              Ir
+            </button>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4 border-t border-white/10 p-6">
+        <div className="flex items-center justify-end gap-2 border-t border-white/10 px-4 py-2">
           <button
             onClick={finish}
-            className="rounded-lg bg-white/10 px-4 py-2 text-white hover:bg-white/20 transition-colors"
+            className="rounded-lg px-3 py-1.5 text-white/70 text-sm hover:bg-white/10 transition-colors"
           >
             Pular
           </button>
           <button
             onClick={finish}
             disabled={completedSteps < 3}
-            className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-700 hover:to-blue-700"
+            className="rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 px-3 py-1.5 text-white text-sm transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:from-purple-700 hover:to-blue-700"
           >
             Concluir
           </button>

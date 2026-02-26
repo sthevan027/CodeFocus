@@ -83,7 +83,7 @@ export default function Home() {
     if (hasParams && router.pathname === '/') {
       router.replace('/', undefined, { shallow: true })
     }
-  }, [router.isReady, router.query, router.pathname])
+  }, [router])
 
   // Mostrar notificação de boas-vindas
   useEffect(() => {
