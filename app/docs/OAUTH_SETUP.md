@@ -29,5 +29,5 @@ Esse erro indica que o provedor OAuth não está habilitado no Supabase.
 
 Em **Authentication** > **URL Configuration**, adicione:
 
-- `http://localhost:3000/auth/callback`
-- `https://seu-dominio.com/auth/callback`
+- `http://localhost:3000/api/auth/oauth-callback`
+- `https://seu-dominio.com/api/auth/oauth-callback`

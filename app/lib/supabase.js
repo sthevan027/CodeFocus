@@ -7,14 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Missing Supabase environment variables')
 }
 
-// Cliente Supabase para uso no cliente (browser)
-// PKCE necessário para OAuth (GitHub, Google) com exchangeCodeForSession
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    flowType: 'pkce',
-    detectSessionInUrl: true,
-  },
-})
+// Clientes servidor - NÃO use no browser. Para OAuth use lib/supabase-browser.js
 
 // Cliente Supabase admin para uso no servidor (API Routes) - BYPASSA RLS
 // Use APENAS para healthchecks/admin (ex: deletar usuário do auth).

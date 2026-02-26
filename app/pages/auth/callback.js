@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../../lib/supabase-browser'
 
 const API_BASE = typeof window !== 'undefined' ? '/api' : ''
 
@@ -14,10 +14,13 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     if (!router.isReady) return
 
-    if (oauthError) {
-      const msg = oauthError === 'provider_not_enabled' || String(oauthError).includes('not enabled')
+    // Suporta error vindo de query (?error=xxx) - redirecionamento do API route
+    const err = oauthError || router.query.error
+
+    if (err) {
+      const msg = err === 'provider_not_enabled' || String(err).includes('not enabled')
         ? 'Provedor (Google/GitHub) não habilitado. Habilite em Supabase > Authentication > Providers.'
-        : `Erro de autenticação: ${oauthError}`
+        : `Erro de autenticação: ${err}`
       setStatus(msg)
       setFailed(true)
       return
@@ -72,7 +75,7 @@ export default function AuthCallbackPage() {
     }
 
     exchangeAndSetCookies()
-  }, [router.isReady, code, oauthError, router])
+  }, [router.isReady, code, oauthError, router.query.error, router])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 flex items-center justify-center">

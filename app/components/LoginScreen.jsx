@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase-browser';
 
 const LoginScreen = ({ onGoToRegister }) => {
   const { loginWithEmail, loading } = useAuth();
@@ -18,7 +18,7 @@ const LoginScreen = ({ onGoToRegister }) => {
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: `${origin}/auth/callback`,
+          redirectTo: `${origin}/api/auth/oauth-callback`,
         },
       });
       if (error) throw error;

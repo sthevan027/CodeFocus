@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase-browser';
 
 const RegisterScreen = ({ onSwitchToLogin }) => {
   const { registerUser, loading } = useAuth();
@@ -19,7 +19,7 @@ const RegisterScreen = ({ onSwitchToLogin }) => {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const { error: err } = await supabase.auth.signInWithOAuth({
         provider,
-        options: { redirectTo: `${origin}/auth/callback` },
+        options: { redirectTo: `${origin}/api/auth/oauth-callback` },
       });
       if (err) throw err;
     } catch (err) {
