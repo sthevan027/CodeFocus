@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/router'
 import { useAuth } from '../context/AuthContext'
 import useKeyboardShortcuts from '../hooks/useKeyboardShortcuts'
 import Timer from '../components/Timer'
@@ -14,6 +15,7 @@ import ShortcutsModal from '../components/ShortcutsModal'
 import OnboardingModal from '../components/OnboardingModal'
 
 export default function Home() {
+  const router = useRouter()
   const { isAuthenticated, logout, pendingVerification, user } = useAuth()
   const [activeView, setActiveView] = useState('timer')
   const [showEditProfile, setShowEditProfile] = useState(false)
@@ -67,6 +69,21 @@ export default function Home() {
   }
 
   useKeyboardShortcuts(shortcuts)
+
+  // OAuth: quando Supabase redireciona para /?code=xxx, enviar para o callback da API e limpar a URL
+  useEffect(() => {
+    if (!router.isReady || typeof window === 'undefined') return
+    const { code, error: qError } = router.query
+    if (code && !qError) {
+      window.location.replace(`/api/auth/oauth-callback?code=${encodeURIComponent(code)}`)
+      return
+    }
+    // Limpar query string da URL (ex.: ?github_connected=1) deixando só o domínio
+    const hasParams = Object.keys(router.query).length > 0
+    if (hasParams && router.pathname === '/') {
+      router.replace('/', undefined, { shallow: true })
+    }
+  }, [router.isReady, router.query, router.pathname])
 
   // Mostrar notificação de boas-vindas
   useEffect(() => {
