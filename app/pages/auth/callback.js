@@ -1,9 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
 import Link from 'next/link'
-import { supabase } from '../../lib/supabase-browser'
-
-const API_BASE = typeof window !== 'undefined' ? '/api' : ''
 
 export default function AuthCallbackPage() {
   const router = useRouter()
@@ -32,50 +29,13 @@ export default function AuthCallbackPage() {
       return
     }
 
-    const exchangeAndSetCookies = async () => {
-      try {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code)
-
-        if (error) {
-          console.error('Erro ao trocar código por sessão:', error)
-          setStatus('Falha ao completar o login. Tente novamente.')
-          setFailed(true)
-          return
-        }
-
-        if (!data?.session) {
-          setStatus('Sessão não retornada.')
-          setFailed(true)
-          return
-        }
-
-        setStatus('Finalizando...')
-
-        const resp = await fetch(`${API_BASE}/auth/session`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            access_token: data.session.access_token,
-            refresh_token: data.session.refresh_token
-          })
-        })
-
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}))
-          throw new Error(err.error || 'Erro ao salvar sessão')
-        }
-
-        router.replace('/')
-      } catch (err) {
-        console.error('Erro no callback OAuth:', err)
-        setStatus(err.message || 'Erro ao completar login.')
-        setFailed(true)
-      }
+    // Redireciona para o callback do servidor - evita AuthPKCECodeVerifierMissingError.
+    // O exchangeCodeForSession DEVE rodar no servidor com cookies (PKCE verifier).
+    if (typeof window !== 'undefined') {
+      window.location.href = `/api/auth/oauth-callback?code=${encodeURIComponent(code)}`
+      return
     }
-
-    exchangeAndSetCookies()
-  }, [router.isReady, code, oauthError, router.query.error, router])
+  }, [router.isReady, code, oauthError, router.query.error])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 flex items-center justify-center">

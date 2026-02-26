@@ -4,12 +4,11 @@ Aplicativo de produtividade para desenvolvedores com técnica Pomodoro, integra�
 
 ## 🚀 Stack Tecnológica
 
-- **Frontend/Backend**: Next.js 14 (App Router)
+- **Frontend/Backend**: Next.js 14 (Pages Router)
 - **Banco de Dados**: Supabase (PostgreSQL)
-- **Autenticação**: JWT + Supabase
+- **Autenticação**: Supabase Auth (cookies httpOnly, OAuth GitHub/Google)
 - **Validação**: Zod
 - **Estilização**: Tailwind CSS
-- **Email**: Resend
 
 ## 📁 Estrutura do Projeto
 
@@ -17,13 +16,14 @@ Aplicativo de produtividade para desenvolvedores com técnica Pomodoro, integra�
 app/
 ├── pages/
 │   └── api/              # API Routes (Backend)
-│       ├── auth/         # Autenticação
+│       ├── auth/         # Autenticação (login, register, OAuth)
 │       ├── cycles/       # Ciclos Pomodoro
 │       ├── settings/     # Configurações
-│       └── reports/      # Relatórios
+│       ├── reports/      # Relatórios
+│       └── github/       # Integração GitHub (repos, issues)
 ├── lib/                  # Utilitários
 │   ├── supabase.js      # Cliente Supabase
-│   ├── auth.js          # Autenticação JWT
+│   ├── auth.js          # Autenticação (Supabase Auth + cookies)
 │   └── validations.js   # Schemas Zod
 ├── supabase/
 │   └── schema.sql       # Schema do banco de dados
@@ -47,25 +47,23 @@ app/
 Crie um arquivo `.env.local` na raiz do projeto `app/`:
 
 ```env
-# Supabase Configuration
+# Supabase (Auth + Database)
 NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=sua-chave-anon
 SUPABASE_SERVICE_ROLE_KEY=sua-chave-service-role
 
-# JWT Configuration
-JWT_SECRET=sua-chave-secreta-jwt-mude-em-producao
-JWT_EXPIRES_IN=30m
-
-# Application URLs
+# App
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
-# Email Configuration (Resend) - Opcional
-RESEND_API_KEY=sua-chave-resend
-MAIL_FROM=noreply@seudominio.com
+# GitHub (Integração) - Opcional
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
 
-# Node Environment
+# Node
 NODE_ENV=development
 ```
+
+Consulte `app/env.example` para o template completo.
 
 ### 3. Instalar Dependências
 
@@ -112,19 +110,19 @@ O schema inclui políticas RLS básicas. Para usar autenticação do Supabase Au
 
 ## 🔐 Autenticação
 
-O sistema usa JWT para autenticação. As rotas protegidas requerem o header:
-
-```
-Authorization: Bearer <token>
-```
+O sistema usa **Supabase Auth** com cookies httpOnly. Suporta:
+- Email/senha (registro e login)
+- OAuth (GitHub, Google via Supabase Dashboard)
+- Verificação por link de confirmação (Supabase)
 
 ### Endpoints de Autenticação
 
 - `POST /api/auth/register` - Registrar usuário
 - `POST /api/auth/login` - Login
 - `GET /api/auth/me` - Obter usuário atual
-- `POST /api/auth/send-verification` - Reenviar código de verificação
-- `POST /api/auth/verify-email` - Verificar email
+- `GET /api/auth/session` - Sessão atual
+- `POST /api/auth/logout` - Logout
+- `POST /api/auth/send-verification` - Reenviar link de verificação
 
 ## 📡 API Routes
 
@@ -146,6 +144,15 @@ Authorization: Bearer <token>
 - `GET /api/reports` - Listar relatórios
 - `GET /api/reports/[id]` - Obter relatório
 - `DELETE /api/reports/[id]` - Deletar relatório
+
+### GitHub (Integração)
+- `GET /api/github/repos` - Listar repositórios do usuário
+- `GET /api/github/issues` - Listar issues de um repositório
+- `POST /api/github/select-repo` - Selecionar repositório
+
+### Utilitários
+- `GET /api/health` - Healthcheck
+- `GET /api/status` - Status do sistema
 
 ## 🔧 Desenvolvimento
 
@@ -169,8 +176,8 @@ import { requireAuth } from '../../../lib/auth'
 
 export default async function handler(req, res) {
   try {
-    const userId = await requireAuth(req)
-    // userId contém o ID do usuário autenticado
+    const { userId } = await requireAuth(req)
+    // userId contém o ID do usuário autenticado (Supabase auth.uid())
   } catch (error) {
     return res.status(401).json({ error: error.message })
   }
@@ -187,11 +194,16 @@ const validatedData = registerSchema.parse(req.body)
 
 ## 📝 Próximos Passos
 
-- [ ] Integrar frontend React com as novas rotas Next.js
-- [ ] Implementar envio de emails via Resend
+- [ ] Implementar onboarding básico
+- [ ] Integrar envio de emails (Resend ou outro serviço)
 - [ ] Adicionar testes
-- [ ] Configurar CI/CD
+- [ ] Rate limiting em endpoints de auth
 - [ ] Deploy na Vercel
+
+## 📚 Documentação Adicional
+
+- `app/docs/GITHUB_CONNECT.md` - Configurar integração GitHub (callback OAuth)
+- `TODO.md` - Checklist do projeto e roadmap
 
 ## 📄 Licença
 
