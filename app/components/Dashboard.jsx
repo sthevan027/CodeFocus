@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import ProductivityStats from './ProductivityStats';
+import React, { useState, useEffect, useCallback } from 'react';
 import ProgressCharts from './ProgressCharts';
 import QuickNotes from './QuickNotes';
 import { useAuth } from '../context/AuthContext';
 import TagManager from './TagManager';
+import apiService from '../services/apiService';
 
 const Dashboard = ({ onClose }) => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [stats, setStats] = useState({
     todayFocus: 0,
     weekFocus: 0,
@@ -20,77 +22,67 @@ const Dashboard = ({ onClose }) => {
     weeklyGoal: 40,
     tags: {},
     recentActivities: [],
-    recentCommits: []
+    recentCommits: [],
+    dailyBreakdown: []
   });
 
-  // Função para carregar dados do dashboard
-  const loadDashboardData = React.useCallback(() => {
+  const loadDashboardData = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
     try {
-      const userKey = user ? `codefocus-history-${user.id}` : 'codefocus-history';
-      const history = JSON.parse(localStorage.getItem(userKey) || '[]');
-      
-      const today = new Date().toDateString();
-      const weekAgo = new Date();
-      weekAgo.setDate(weekAgo.getDate() - 7);
-      
-      const todaySessions = history.filter(session => 
-        new Date(session.timestamp).toDateString() === today && session.type === 'session'
-      );
-      
-      const weekSessions = history.filter(session => 
-        new Date(session.timestamp) >= weekAgo && session.type === 'session'
-      );
-      
-      const todayFocus = todaySessions.reduce((total, session) => total + (session.duration || 0), 0);
-      const weekFocus = weekSessions.reduce((total, session) => total + (session.duration || 0), 0);
+      const today = new Date().toISOString().slice(0, 10);
+      const [overview, daily, weekly, cycles] = await Promise.all([
+        apiService.getCycleStats(),
+        apiService.getDailyStats(today),
+        apiService.getWeeklyStats(),
+        apiService.getCycles(0, 20)
+      ]);
 
-      // Carregar commits registrados (salvos pelo GitCommitModal)
-      const commitsKey = user ? `codefocus-commits-${user.id}` : 'codefocus-commits';
-      const commits = JSON.parse(localStorage.getItem(commitsKey) || '[]');
-      
-      // Calcular produtividade
-      const focusSessions = todaySessions.filter(s => s.phase === 'focus');
-      const productivity = focusSessions.length > 0 ? (focusSessions.length / (focusSessions.length + 1)) * 100 : 0;
+      const todayFocus = daily?.total_focus_minutes ?? 0;
+      const weekFocus = weekly?.total_focus_minutes ?? 0;
+      const weeklyGoal = 40;
+      const weeklyProgress = Math.min(Math.round((weekFocus / (weeklyGoal * 60)) * 100), 100);
 
-      // Calcular estatísticas completas
-      const totalFocusTime = history.reduce((total, session) => total + (session.duration || 0), 0);
-      const totalSessions = history.filter(s => s.type === 'session').length;
-      const averageSessionLength = totalSessions > 0 ? Math.round(totalFocusTime / totalSessions / 60) : 0;
+      const recentActivities = (cycles || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        phase: c.phase,
+        duration: (c.duration || 0) * 60,
+        timestamp: c.created_at,
+        tags: []
+      }));
 
-      // Calcular progresso semanal (simplificado)
-      const weeklyProgress = Math.min(Math.round((weekFocus / (40 * 60)) * 100), 100);
-
-      // Calcular tags
-      const tags = {};
-      history.forEach(session => {
-        if (session.tags && Array.isArray(session.tags)) {
-          session.tags.forEach(tag => {
-            if (!tags[tag]) {
-              tags[tag] = { time: 0, sessions: 0 };
-            }
-            tags[tag].time += session.duration || 0;
-            tags[tag].sessions += 1;
-          });
-        }
-      });
+      const recentCommits = (cycles || [])
+        .filter((c) => c.git_commit)
+        .slice(0, 15)
+        .map((c) => ({
+          id: c.id,
+          message: c.git_commit,
+          cycleName: c.name,
+          timestamp: c.created_at
+        }));
 
       setStats({
-        todayFocus: Math.round(todayFocus / 60), // em minutos
-        weekFocus: Math.round(weekFocus / 60),
-        totalCycles: history.filter(s => s.type === 'session').length,
-        productivity: Math.round(productivity),
-        totalFocusTime,
-        totalSessions,
-        averageSessionLength,
+        todayFocus: Math.round(todayFocus),
+        weekFocus: Math.round(weekFocus),
+        totalCycles: overview?.total_cycles ?? 0,
+        productivity: overview?.productivity_score ?? 0,
+        totalFocusTime: (overview?.total_focus_minutes ?? 0) * 60,
+        totalSessions: overview?.total_cycles ?? 0,
+        averageSessionLength: Math.round(overview?.average_cycle_duration ?? 0),
         weeklyProgress,
-        weeklyGoal: 40,
-        tags,
-        recentActivities: history.slice(0, 20), // Últimas 20 atividades
-        recentCommits: Array.isArray(commits) ? commits.slice(0, 15) : [] // Últimos 15 commits
+        weeklyGoal,
+        tags: {},
+        recentActivities,
+        recentCommits,
+        dailyBreakdown: weekly?.daily_breakdown ?? []
       });
-      
-    } catch (error) {
-      console.error('Erro ao carregar dados do dashboard:', error);
+    } catch (err) {
+      console.error('Erro ao carregar dados do dashboard:', err);
+      setError(err.message || 'Erro ao carregar dados');
+    } finally {
+      setLoading(false);
     }
   }, [user]);
 
@@ -98,7 +90,34 @@ const Dashboard = ({ onClose }) => {
     loadDashboardData();
   }, [loadDashboardData]);
 
-  if (!user) return null; // Ensure user is logged in
+  if (!user) return null;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4" />
+          <p className="text-white/60">Carregando dados...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center max-w-md">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={loadDashboardData}
+            className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-white transition-colors"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const tabs = [
     { id: 'overview', label: 'Visão Geral', icon: '📊' },

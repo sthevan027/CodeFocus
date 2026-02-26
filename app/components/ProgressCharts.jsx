@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
 
 const ProgressCharts = ({ stats }) => {
   const [timeRange, setTimeRange] = useState('week');
@@ -15,44 +14,24 @@ const ProgressCharts = ({ stats }) => {
   }, [stats, timeRange]);
 
   const generateChartData = () => {
-    const now = new Date();
-    const daily = [];
-    const weekly = [];
     const tags = Object.entries(stats.tags || {}).map(([tag, data]) => ({
       name: tag,
       time: data.time,
       sessions: data.sessions
     }));
 
-    // Gerar dados diários (últimos 7 dias)
-    for (let i = 6; i >= 0; i--) {
-      const date = new Date(now);
-      date.setDate(date.getDate() - i);
+    const daily = (stats.dailyBreakdown || []).map((d) => {
+      const date = new Date(d.date);
       const dayName = date.toLocaleDateString('pt-BR', { weekday: 'short' });
-      
-      // Simular dados baseados no total (em produção, viria do localStorage)
-      const randomTime = Math.random() * 4 * 3600; // 0-4 horas
-      daily.push({
+      const timeSeconds = (d.total_focus_minutes || 0) * 60;
+      return {
         day: dayName,
-        time: randomTime,
-        sessions: Math.floor(Math.random() * 8) + 1
-      });
-    }
+        time: timeSeconds,
+        sessions: d.sessions || 0
+      };
+    });
 
-    // Gerar dados semanais (últimas 4 semanas)
-    for (let i = 3; i >= 0; i--) {
-      const weekStart = new Date(now);
-      weekStart.setDate(weekStart.getDate() - (i * 7));
-      const weekName = `Sem ${weekStart.getDate()}/${weekStart.getMonth() + 1}`;
-      
-      const randomTime = Math.random() * 25 * 3600; // 0-25 horas
-      weekly.push({
-        week: weekName,
-        time: randomTime,
-        sessions: Math.floor(Math.random() * 30) + 5
-      });
-    }
-
+    const weekly = [];
     setChartData({ daily, weekly, tags });
   };
 
@@ -99,7 +78,12 @@ const ProgressCharts = ({ stats }) => {
       {/* Gráfico Diário */}
       {timeRange === 'week' && (
         <div className="bg-white/5 rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-4">Atividade Diária</h3>
+          <h3 className="text-white font-semibold mb-4">Atividade Diária (últimos 7 dias)</h3>
+          {chartData.daily.length === 0 ? (
+            <div className="py-12 text-center text-white/50">
+              Nenhum dado de foco nos últimos 7 dias. Complete ciclos no Timer para ver estatísticas aqui.
+            </div>
+          ) : (
           <div className="flex items-end justify-between h-48 space-x-2">
             {chartData.daily.map((day, index) => {
               const maxTime = getMaxValue(chartData.daily, 'time');
@@ -126,13 +110,19 @@ const ProgressCharts = ({ stats }) => {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
       {/* Gráfico Semanal */}
       {timeRange === 'month' && (
         <div className="bg-white/5 rounded-xl p-6">
-          <h3 className="text-white font-semibold mb-4">Atividade Semanal</h3>
+          <h3 className="text-white font-semibold mb-4">Atividade Semanal (últimas 4 semanas)</h3>
+          {chartData.weekly.length === 0 ? (
+            <div className="py-12 text-center text-white/50">
+              Dados semanais ainda não disponíveis. Esta funcionalidade será implementada em breve.
+            </div>
+          ) : (
           <div className="flex items-end justify-between h-48 space-x-4">
             {chartData.weekly.map((week, index) => {
               const maxTime = getMaxValue(chartData.weekly, 'time');
@@ -159,13 +149,19 @@ const ProgressCharts = ({ stats }) => {
               );
             })}
           </div>
+          )}
         </div>
       )}
 
       {/* Gráfico de Tags */}
-      {timeRange === 'tags' && chartData.tags.length > 0 && (
+      {timeRange === 'tags' && (
         <div className="bg-white/5 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Tempo por Tag</h3>
+          {chartData.tags.length === 0 ? (
+            <div className="py-12 text-center text-white/50">
+              Nenhuma tag registrada. As tags serão exibidas quando houver suporte no banco de dados.
+            </div>
+          ) : (
           <div className="space-y-4">
             {chartData.tags
               .sort((a, b) => b.time - a.time)
@@ -199,6 +195,7 @@ const ProgressCharts = ({ stats }) => {
                 );
               })}
           </div>
+          )}
         </div>
       )}
 
@@ -206,7 +203,7 @@ const ProgressCharts = ({ stats }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white/5 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Melhor Dia</h3>
-          {chartData.daily.length > 0 && (() => {
+          {chartData.daily.length > 0 ? (() => {
             const bestDay = chartData.daily.reduce((best, current) => 
               current.time > best.time ? current : best
             );
@@ -220,12 +217,14 @@ const ProgressCharts = ({ stats }) => {
                 </p>
               </div>
             );
-          })()}
+          })() : (
+            <p className="text-white/50 text-sm">Sem dados</p>
+          )}
         </div>
 
         <div className="bg-white/5 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Média Diária</h3>
-          {chartData.daily.length > 0 && (() => {
+          {chartData.daily.length > 0 ? (() => {
             const avgTime = chartData.daily.reduce((sum, day) => sum + day.time, 0) / chartData.daily.length;
             const avgSessions = chartData.daily.reduce((sum, day) => sum + day.sessions, 0) / chartData.daily.length;
             return (
@@ -238,12 +237,14 @@ const ProgressCharts = ({ stats }) => {
                 </p>
               </div>
             );
-          })()}
+          })() : (
+            <p className="text-white/50 text-sm">Sem dados</p>
+          )}
         </div>
 
         <div className="bg-white/5 rounded-xl p-6">
           <h3 className="text-white font-semibold mb-4">Tags Mais Usadas</h3>
-          {chartData.tags.length > 0 && (() => {
+          {chartData.tags.length > 0 ? (() => {
             const topTag = chartData.tags[0];
             return (
               <div>
@@ -255,7 +256,9 @@ const ProgressCharts = ({ stats }) => {
                 </p>
               </div>
             );
-          })()}
+          })() : (
+            <p className="text-white/50 text-sm">Sem tags</p>
+          )}
         </div>
       </div>
 

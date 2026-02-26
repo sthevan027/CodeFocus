@@ -155,6 +155,10 @@ class ApiService {
     return this.request(`/cycles/stats/daily?date=${date}`)
   }
 
+  async getWeeklyStats() {
+    return this.request('/cycles/stats/weekly')
+  }
+
   // ========== CONFIGURAÇÕES ==========
   async getSettings() {
     return this.request('/settings/')
