@@ -12,16 +12,17 @@ class ApiService {
   }
 
   // Função auxiliar para fazer requisições
+  // silent: não loga 401 (útil para checar sessão quando usuário pode estar deslogado)
   async request(endpoint, options = {}) {
+    const { silent, ...fetchOptions } = options
     const url = `${this.baseURL}${endpoint}`
     const config = {
       headers: {
-        ...options.headers,
+        ...fetchOptions.headers,
       },
-      ...options,
+      ...fetchOptions,
     }
 
-    // Preferir cookie httpOnly (credentials include).
     config.credentials = 'include'
 
     try {
@@ -31,12 +32,18 @@ class ApiService {
 
       if (!response.ok) {
         const message = typeof data === 'string' ? data : data.detail || data.error || 'Erro na requisição'
-        throw new Error(message)
+        const err = new Error(message)
+        if (silent && response.status === 401) {
+          err.silent = true
+        }
+        throw err
       }
 
       return data
     } catch (error) {
-      console.error('Erro na API:', error)
+      if (!error.silent) {
+        console.error('Erro na API:', error)
+      }
       throw error
     }
   }
@@ -65,7 +72,7 @@ class ApiService {
   }
 
   async getCurrentUser() {
-    return this.request('/auth/me')
+    return this.request('/auth/me', { silent: true })
   }
 
   async sendVerificationEmail(email) {

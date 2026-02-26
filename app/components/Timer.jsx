@@ -170,6 +170,7 @@ const Timer = forwardRef((props, ref) => {
       cycleName,
       customFocusMinutes
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft, isRunning, isPaused, currentPhase, cycleName, customFocusMinutes]);
 
   // Timer principal
@@ -228,6 +229,7 @@ const Timer = forwardRef((props, ref) => {
     }
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, timeLeft, currentPhase, cycleName, selectedTags, sessionNote, getFocusCount, setFocusCount, settings]);
 
   // Obter duração da fase atual

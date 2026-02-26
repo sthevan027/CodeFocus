@@ -26,6 +26,7 @@ const QuickNotes = ({ onUpdate = () => {} } = {}) => {
     loadNotes();
     loadSessions();
     loadUserTags();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   const loadNotes = () => {

@@ -64,7 +64,6 @@ export const AuthProvider = ({ children }) => {
           return;
         } catch (error) {
           if (!OFFLINE_MODE_ENABLED) {
-            console.warn('Falha ao buscar usuário do backend. Limpando sessão local.', error);
             localStorage.removeItem('codefocus-user');
             return;
           }

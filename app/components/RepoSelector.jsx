@@ -17,7 +17,7 @@ const RepoSelector = ({ isOpen, onClose, selectedRepo, onSelect, settings }) => 
       setPickedRepo(selectedRepo || null)
       setPickedIssue(null)
     }
-  }, [isOpen])
+  }, [isOpen, selectedRepo])
 
   useEffect(() => {
     if (pickedRepo?.owner && pickedRepo?.repo) {

@@ -11,6 +11,7 @@ const ProgressCharts = ({ stats }) => {
 
   useEffect(() => {
     generateChartData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stats, timeRange]);
 
   const generateChartData = () => {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/router'
+import Link from 'next/link'
 import { supabase } from '../../lib/supabase'
 
 const API_BASE = typeof window !== 'undefined' ? '/api' : ''
@@ -14,7 +15,10 @@ export default function AuthCallbackPage() {
     if (!router.isReady) return
 
     if (oauthError) {
-      setStatus(`Erro de autenticação: ${oauthError}`)
+      const msg = oauthError === 'provider_not_enabled' || String(oauthError).includes('not enabled')
+        ? 'Provedor (Google/GitHub) não habilitado. Habilite em Supabase > Authentication > Providers.'
+        : `Erro de autenticação: ${oauthError}`
+      setStatus(msg)
       setFailed(true)
       return
     }
@@ -81,12 +85,12 @@ export default function AuthCallbackPage() {
         ) : (
           <>
             <p className="text-red-400 mb-6">{status}</p>
-            <a
+            <Link
               href="/"
               className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
             >
               Voltar ao início
-            </a>
+            </Link>
           </>
         )}
       </div>

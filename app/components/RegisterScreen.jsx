@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 
 const RegisterScreen = ({ onSwitchToLogin }) => {
   const { registerUser, loading } = useAuth();
   const [oauthLoading, setOauthLoading] = useState(null);
+  const [error, setError] = useState('');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -21,8 +23,12 @@ const RegisterScreen = ({ onSwitchToLogin }) => {
       });
       if (err) throw err;
     } catch (err) {
-      setError(err.message || 'Erro ao iniciar login com ' + provider);
-      setOauthLoading(null);
+      const msg = err.message || ''
+      const friendly = msg.includes('not enabled') || msg.includes('provider')
+        ? 'Configure o provedor no Supabase: Authentication > Providers > Google (ou GitHub).'
+        : (err.message || 'Erro ao iniciar login com ' + provider)
+      setError(friendly)
+      setOauthLoading(null)
     }
   };
 
@@ -58,13 +64,13 @@ const RegisterScreen = ({ onSwitchToLogin }) => {
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-purple-800 flex items-center justify-center relative overflow-hidden">
       {/* Logo Background */}
       <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-        <img src="/logo-main.png" alt="Logo Background" className="w-96 h-96 object-contain opacity-20" />
+        <Image src="/logo-main.png" alt="Logo Background" width={384} height={384} className="object-contain opacity-20" />
       </div>
       
       {/* Logo Principal */}
       <div className="flex items-center justify-center mb-6">
         <div className="w-16 h-16 bg-gradient-to-br from-purple-600 via-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg mr-4">
-          <img src="/logo-main.png" alt="CodeFocus Logo" className="w-12 h-12 object-contain" />
+          <Image src="/logo-main.png" alt="CodeFocus Logo" width={48} height={48} className="object-contain" />
         </div>
         <div>
           <h1 className="text-3xl font-bold text-white">CodeFocus</h1>

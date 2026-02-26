@@ -150,40 +150,58 @@ jobs:
         env:
           REPORT_BODY: ${{ toJSON(steps.report.outputs.body) }}
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
-            const body = JSON.parse(process.env.REPORT_BODY);
-            const refName = '${{ github.ref_name }}';
-            const existingIssues = await github.rest.issues.listForRepo({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              state: 'open',
-              labels: 'bug,ci-automated'
-            });
+            try {
+              const body = (() => { try { return JSON.parse(process.env.REPORT_BODY || '""'); } catch (_) { return process.env.REPORT_BODY || 'Erro ao gerar relatório.'; } })();
+              const refName = '${{ github.ref_name }}';
+              const maxBodyLength = 60000;
 
-            const branchIssue = existingIssues.data.find(
-              i => i.title.includes(refName)
-            );
+              const truncatedBody = body.length > maxBodyLength
+                ? body.substring(0, maxBodyLength) + '\n\n... (conteúdo truncado)'
+                : body;
 
-            const title = `🐛 CI Falhou - Branch: ${refName} (${new Date().toISOString().split('T')[0]})`;
-
-            if (branchIssue) {
-              await github.rest.issues.update({
+              const existingIssues = await github.rest.issues.listForRepo({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                issue_number: branchIssue.number,
-                body
+                state: 'open',
               });
-              console.log(`Issue #${branchIssue.number} atualizada`);
-            } else {
-              const issue = await github.rest.issues.create({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                title,
-                body,
-                labels: ['bug', 'ci-automated']
-              });
-              console.log(`Issue #${issue.data.number} criada`);
+
+              const branchIssue = existingIssues.data.find(
+                i => i.title.includes(refName)
+              );
+
+              const title = `🐛 CI Falhou - Branch: ${refName} (${new Date().toISOString().split('T')[0]})`;
+
+              const issueParams = { owner: context.repo.owner, repo: context.repo.repo };
+              const labels = [];
+              for (const labelName of ['ci-automated', 'bug']) {
+                try {
+                  await github.rest.issues.getLabel({ ...issueParams, name: labelName });
+                  labels.push(labelName);
+                } catch (_) {}
+              }
+
+              if (branchIssue) {
+                await github.rest.issues.update({
+                  ...issueParams,
+                  issue_number: branchIssue.number,
+                  body: truncatedBody
+                });
+                console.log(`Issue #${branchIssue.number} atualizada`);
+              } else {
+                const issue = await github.rest.issues.create({
+                  ...issueParams,
+                  title,
+                  body: truncatedBody,
+                  labels
+                });
+                console.log(`Issue #${issue.data.number} criada`);
+              }
+            } catch (error) {
+              console.error('Erro ao criar/atualizar issue:', error.message);
+              throw error;
             }
 
       - name: Comentar no PR
@@ -191,15 +209,27 @@ jobs:
         env:
           REPORT_BODY: ${{ toJSON(steps.report.outputs.body) }}
         uses: actions/github-script@v7
+        continue-on-error: true
         with:
           script: |
-            const body = JSON.parse(process.env.REPORT_BODY);
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body
-            });
+            try {
+              const body = (() => { try { return JSON.parse(process.env.REPORT_BODY || '""'); } catch (_) { return process.env.REPORT_BODY || 'Erro ao gerar relatório.'; } })();
+              const maxBodyLength = 60000;
+              const truncatedBody = body.length > maxBodyLength
+                ? body.substring(0, maxBodyLength) + '\n\n... (conteúdo truncado)'
+                : body;
+
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: truncatedBody
+              });
+              console.log('Comentário adicionado ao PR');
+            } catch (error) {
+              console.error('Erro ao comentar no PR:', error.message);
+              throw error;
+            }
 
   ci-success:
     name: CI Aprovado

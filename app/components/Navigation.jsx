@@ -1,4 +1,5 @@
 import React from 'react';
+import Image from 'next/image';
 import { useAuth } from '../context/AuthContext';
 
 const Navigation = ({ activeView, onViewChange, onLogout }) => {
@@ -16,7 +17,7 @@ const Navigation = ({ activeView, onViewChange, onLogout }) => {
       {/* Logo */}
       <div className="mb-8">
         <div className="w-12 h-12 bg-gradient-to-br from-purple-600 via-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg hover:scale-110 transition-transform cursor-pointer">
-          <img src="/logo-main.png" alt="CodeFocus" className="w-8 h-8 object-contain" />
+          <Image src="/logo-main.png" alt="CodeFocus" width={32} height={32} className="object-contain" />
         </div>
       </div>
 
