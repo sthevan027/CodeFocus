@@ -2,7 +2,9 @@ import { useState, useEffect, forwardRef, useImperativeHandle, useRef, useCallba
 import { useAuth } from '../context/AuthContext';
 import notificationManager from '../utils/notificationUtils';
 import GitCommitModal from './GitCommitModal';
+import RepoSelector from './RepoSelector';
 import { loadSettings } from '../utils/settingsUtils';
+import apiService from '../services/apiService';
 
 const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
@@ -47,6 +49,9 @@ const Timer = forwardRef((props, ref) => {
   const [showCycleInput, setShowCycleInput] = useState(false);
   const [customFocusMinutes, _setCustomFocusMinutes] = useState(initialState.customFocusMinutes);
   const [showGitModal, setShowGitModal] = useState(false);
+  const [showRepoSelector, setShowRepoSelector] = useState(false);
+  const [selectedRepo, setSelectedRepo] = useState(null);
+  const [pendingBreakPhase, setPendingBreakPhase] = useState(null);
   const [selectedTags, setSelectedTags] = useState([]);
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [sessionNote, setSessionNote] = useState('');
@@ -73,6 +78,14 @@ const Timer = forwardRef((props, ref) => {
     } catch {
       setAvailableTags([]);
     }
+  }, [user]);
+
+  // Carregar repositório selecionado do backend
+  useEffect(() => {
+    if (!user) return;
+    apiService.getSettings().then((s) => {
+      if (s?.selected_repo) setSelectedRepo(s.selected_repo);
+    }).catch(() => {});
   }, [user]);
 
   const getFocusCountKey = useCallback(() => {
@@ -191,6 +204,7 @@ const Timer = forwardRef((props, ref) => {
       // Mostrar modal de nota se for sessão de foco
       if (currentPhase === 'focus') {
         setShowNoteModal(true);
+        setPendingBreakPhase(nextBreakPhase);
         if (settings.auto_start_breaks) {
           setPendingAutoStartPhase(nextBreakPhase);
         }
@@ -540,20 +554,53 @@ const Timer = forwardRef((props, ref) => {
             </button>
           </div>
         )}
+
+        {/* Projeto GitHub - mostrar quando parado */}
+        {!isRunning && !isPaused && (
+          <button
+            onClick={() => setShowRepoSelector(true)}
+            className="mt-2 px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-white/60 hover:text-white/80 text-sm flex items-center gap-2 border border-white/10"
+          >
+            {selectedRepo ? `📂 ${selectedRepo.full_name || selectedRepo.repo}` : '🔗 Selecionar projeto GitHub'}
+          </button>
+        )}
       </div>
 
       {/* Campo único mantido acima. Entrada adicional removida. */}
 
       {/* Ações rápidas de pausas removidas para manter apenas o campo e iniciar */}
 
-      {/* Git Commit Modal */}
+      {/* Git Commit Modal - ao confirmar commit: timer já parou, inicia descanso + notificação */}
       <GitCommitModal
         isOpen={showGitModal}
-        onClose={() => setShowGitModal(false)}
+        onClose={() => {
+          setShowGitModal(false);
+          if (pendingBreakPhase) {
+            if (pendingBreakPhase === 'shortBreak') startShortBreak();
+            else if (pendingBreakPhase === 'longBreak') startLongBreak();
+            setPendingBreakPhase(null);
+            notificationManager.notifyPauseStarted(pendingBreakPhase);
+          }
+        }}
         cycleName={cycleName}
         onCommit={(result) => {
-          console.log('Commit realizado:', result);
+          setShowGitModal(false);
+          notificationManager.showToast('Commit registrado!', 'Hora do descanso.', 'success');
+          if (pendingBreakPhase) {
+            if (pendingBreakPhase === 'shortBreak') startShortBreak();
+            else if (pendingBreakPhase === 'longBreak') startLongBreak();
+            notificationManager.notifyPauseStarted(pendingBreakPhase);
+            setPendingBreakPhase(null);
+          }
         }}
+      />
+
+      {/* Seletor de repositório GitHub */}
+      <RepoSelector
+        isOpen={showRepoSelector}
+        onClose={() => setShowRepoSelector(false)}
+        selectedRepo={selectedRepo}
+        onSelect={(repo) => setSelectedRepo(repo)}
       />
 
       {/* Modal de Notas e Tags */}

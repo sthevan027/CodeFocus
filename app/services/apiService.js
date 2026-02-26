@@ -189,6 +189,27 @@ class ApiService {
       method: 'DELETE',
     })
   }
+
+  // ========== GITHUB ==========
+  getGithubRepos() {
+    return this.request('/github/repos')
+  }
+
+  getGithubIssues(owner, repo) {
+    return this.request(`/github/issues?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`)
+  }
+
+  selectRepo(selectedRepo) {
+    return this.request('/github/select-repo', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(selectedRepo),
+    })
+  }
+
+  getConnectGithubUrl() {
+    return `${this.baseURL}/github/auth`
+  }
 }
 
 // Instância global

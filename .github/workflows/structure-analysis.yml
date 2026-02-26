@@ -1,0 +1,322 @@
+name: "Análise de Estrutura do Projeto"
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - "app/**"
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - "app/**"
+  schedule:
+    - cron: "0 8 * * 1" # toda segunda às 8h UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  analyze-structure:
+    name: Análise de Estrutura
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verificar estrutura esperada
+        id: structure
+        run: |
+          WARNINGS=""
+          ERRORS=""
+          INFO=""
+
+          echo "🔍 Analisando estrutura do projeto CodeFocus..."
+
+          # --- Verificar diretórios obrigatórios (Next.js) ---
+          REQUIRED_DIRS=(
+            "app/components"
+            "app/pages"
+            "app/pages/api"
+            "app/lib"
+            "app/context"
+            "app/hooks"
+            "app/utils"
+            "app/public"
+            "app/supabase"
+          )
+
+          for dir in "${REQUIRED_DIRS[@]}"; do
+            if [ ! -d "$dir" ]; then
+              WARNINGS+="⚠️ Diretório ausente: \`$dir\`\n"
+            fi
+          done
+
+          # --- Verificar arquivos críticos (Next.js) ---
+          REQUIRED_FILES=(
+            "app/package.json"
+            "app/next.config.js"
+            "app/pages/_app.js"
+            "app/pages/index.js"
+          )
+
+          for file in "${REQUIRED_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              ERRORS+="❌ Arquivo crítico ausente: \`$file\`\n"
+            fi
+          done
+
+          # --- Verificar arquivos de config na raiz ---
+          ROOT_FILES=(".gitignore" "README.md")
+          for file in "${ROOT_FILES[@]}"; do
+            if [ ! -f "$file" ]; then
+              WARNINGS+="⚠️ Arquivo recomendado ausente na raiz: \`$file\`\n"
+            fi
+          done
+
+          # --- Contar arquivos por tipo ---
+          JSX_COUNT=$(find app -name "*.jsx" 2>/dev/null | wc -l)
+          JS_COUNT=$(find app -name "*.js" 2>/dev/null | wc -l)
+          CSS_COUNT=$(find app -name "*.css" 2>/dev/null | wc -l)
+          SQL_COUNT=$(find app/supabase -name "*.sql" 2>/dev/null | wc -l)
+
+          INFO+="### 📊 Métricas do Projeto\n\n"
+          INFO+="| Tipo | Quantidade |\n"
+          INFO+="|------|------------|\n"
+          INFO+="| Componentes (.jsx) | $JSX_COUNT |\n"
+          INFO+="| JavaScript (.js) | $JS_COUNT |\n"
+          INFO+="| CSS (.css) | $CSS_COUNT |\n"
+          INFO+="| Migrations SQL | $SQL_COUNT |\n\n"
+
+          # --- Verificar arquivos grandes (>300 linhas) ---
+          LARGE_FILES=""
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              LINES=$(wc -l < "$file")
+              if [ "$LINES" -gt 300 ]; then
+                LARGE_FILES+="⚠️ \`$file\` — $LINES linhas (considerar dividir)\n"
+              fi
+            fi
+          done < <(find app -name "*.jsx" -o -name "*.js" 2>/dev/null)
+
+          if [ -n "$LARGE_FILES" ]; then
+            WARNINGS+="\n### 📏 Arquivos Grandes (>300 linhas)\n\n$LARGE_FILES\n"
+          fi
+
+          # --- Verificar se .env está no repo ---
+          if [ -f "app/.env" ]; then
+            ERRORS+="❌ **SEGURANÇA:** \`app/.env\` está no repositório! Adicione ao .gitignore\n"
+          fi
+          if [ -f "app/.env.local" ]; then
+            ERRORS+="❌ **SEGURANÇA:** \`app/.env.local\` está no repositório! Adicione ao .gitignore\n"
+          fi
+          if [ -f ".env" ]; then
+            ERRORS+="❌ **SEGURANÇA:** \`.env\` está no repositório! Adicione ao .gitignore\n"
+          fi
+
+          # --- Verificar dependências esperadas ---
+          if [ -f "app/package.json" ]; then
+            HAS_SUPABASE=$(grep -c "supabase" app/package.json || true)
+            HAS_NEXT=$(grep -c "\"next\"" app/package.json || true)
+            HAS_TAILWIND=$(grep -c "tailwindcss" app/package.json || true)
+
+            if [ "$HAS_SUPABASE" -eq 0 ]; then
+              WARNINGS+="⚠️ \`@supabase/supabase-js\` não encontrado no package.json\n"
+            fi
+            if [ "$HAS_NEXT" -eq 0 ]; then
+              WARNINGS+="⚠️ \`next\` não encontrado no package.json\n"
+            fi
+            if [ "$HAS_TAILWIND" -eq 0 ]; then
+              WARNINGS+="⚠️ \`tailwindcss\` não encontrado no package.json\n"
+            fi
+          fi
+
+          # --- Verificar estrutura de migrations ---
+          if [ -d "app/supabase/migrations" ]; then
+            MIGRATION_COUNT=$(ls app/supabase/migrations/*.sql 2>/dev/null | wc -l)
+            INFO+="### 🗃️ Migrations Supabase\n\n"
+
+            if [ "$MIGRATION_COUNT" -gt 0 ]; then
+              INFO+="| Migration | Arquivo |\n"
+              INFO+="|-----------|----------|\n"
+              for f in app/supabase/migrations/*.sql; do
+                [ -f "$f" ] || continue
+                NAME=$(basename "$f")
+                INFO+="| ✅ | \`$NAME\` |\n"
+              done
+              INFO+="\n"
+            else
+              WARNINGS+="⚠️ Nenhuma migration SQL encontrada em \`app/supabase/migrations/\`\n"
+            fi
+          fi
+
+          # --- Verificar componentes esperados do CodeFocus ---
+          EXPECTED_COMPONENTS=("Timer" "Dashboard" "SettingsScreen" "LoginScreen" "RegisterScreen" "Navigation")
+          MISSING_COMPONENTS=""
+          for comp in "${EXPECTED_COMPONENTS[@]}"; do
+            if [ ! -f "app/components/${comp}.jsx" ] && [ ! -f "app/components/${comp}.js" ]; then
+              MISSING_COMPONENTS+="⚠️ Componente não implementado: \`${comp}\`\n"
+            fi
+          done
+
+          if [ -n "$MISSING_COMPONENTS" ]; then
+            WARNINGS+="\n### 🧩 Componentes Esperados\n\n$MISSING_COMPONENTS\n"
+          fi
+
+          # --- Verificar hooks esperados ---
+          EXPECTED_HOOKS=("useKeyboardShortcuts")
+          MISSING_HOOKS=""
+          for hook in "${EXPECTED_HOOKS[@]}"; do
+            if [ ! -f "app/hooks/${hook}.js" ] && [ ! -f "app/hooks/${hook}.jsx" ]; then
+              MISSING_HOOKS+="⚠️ Hook não implementado: \`${hook}\`\n"
+            fi
+          done
+
+          if [ -n "$MISSING_HOOKS" ]; then
+            WARNINGS+="\n### 🪝 Hooks Esperados\n\n$MISSING_HOOKS\n"
+          fi
+
+          # --- Verificar API routes esperadas ---
+          EXPECTED_API=("auth/login" "auth/register" "cycles/index" "settings/index")
+          MISSING_API=""
+          for api in "${EXPECTED_API[@]}"; do
+            if [ ! -f "app/pages/api/${api}.js" ]; then
+              MISSING_API+="⚠️ API route não implementada: \`/api/${api}\`\n"
+            fi
+          done
+
+          if [ -n "$MISSING_API" ]; then
+            WARNINGS+="\n### 🔌 API Routes Esperadas\n\n$MISSING_API\n"
+          fi
+
+          # --- Montar resultado final ---
+          HAS_ERRORS="false"
+          if [ -n "$ERRORS" ]; then
+            HAS_ERRORS="true"
+          fi
+
+          HAS_WARNINGS="false"
+          if [ -n "$WARNINGS" ]; then
+            HAS_WARNINGS="true"
+          fi
+
+          echo "has_errors=$HAS_ERRORS" >> $GITHUB_OUTPUT
+          echo "has_warnings=$HAS_WARNINGS" >> $GITHUB_OUTPUT
+
+          EOF=$(dd if=/dev/urandom bs=15 count=1 status=none | base64)
+
+          BODY="## 🏗️ Análise de Estrutura — CodeFocus\n\n"
+          BODY+="**Branch:** \`${{ github.ref_name }}\`\n"
+          BODY+="**Data:** $(date '+%Y-%m-%d %H:%M UTC')\n\n"
+          BODY+="---\n\n"
+          BODY+="$INFO"
+
+          if [ -n "$ERRORS" ]; then
+            BODY+="### ❌ Erros Críticos\n\n$ERRORS\n"
+          fi
+
+          if [ -n "$WARNINGS" ]; then
+            BODY+="### ⚠️ Avisos e Melhorias\n\n$WARNINGS\n"
+          fi
+
+          if [ -z "$ERRORS" ] && [ -z "$WARNINGS" ]; then
+            BODY+="### ✅ Tudo OK!\n\nA estrutura do projeto está alinhada com a arquitetura definida.\n"
+          fi
+
+          BODY+="\n---\n"
+          BODY+="*Análise automática baseada na estrutura do CodeFocus*"
+
+          echo "body<<$EOF" >> $GITHUB_OUTPUT
+          echo -e "$BODY" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
+
+      - name: Criar/Atualizar Issue de Estrutura
+        if: (steps.structure.outputs.has_errors == 'true' || steps.structure.outputs.has_warnings == 'true') && github.event_name != 'pull_request'
+        env:
+          STRUCTURE_BODY: ${{ toJSON(steps.structure.outputs.body) }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = JSON.parse(process.env.STRUCTURE_BODY);
+            const existingIssues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'structure,ci-automated'
+            });
+
+            const title = '🏗️ Análise de Estrutura — Pendências Detectadas';
+
+            const structureIssue = existingIssues.data.find(
+              i => i.title.includes('Análise de Estrutura')
+            );
+
+            if (structureIssue) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: structureIssue.number,
+                body
+              });
+              console.log(`Issue #${structureIssue.number} atualizada`);
+            } else {
+              const issue = await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['structure', 'ci-automated']
+              });
+              console.log(`Issue #${issue.data.number} criada`);
+            }
+
+      - name: Comentar no PR
+        if: github.event_name == 'pull_request'
+        env:
+          STRUCTURE_BODY: ${{ toJSON(steps.structure.outputs.body) }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const body = JSON.parse(process.env.STRUCTURE_BODY);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body
+            });
+
+      - name: Fechar issue se tudo OK
+        if: steps.structure.outputs.has_errors == 'false' && steps.structure.outputs.has_warnings == 'false' && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'structure,ci-automated'
+            });
+
+            for (const issue of issues.data) {
+              if (issue.title.includes('Análise de Estrutura')) {
+                await github.rest.issues.update({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  state: 'closed'
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: '✅ **Estrutura OK!** Todas as pendências foram resolvidas.'
+                });
+              }
+            }
+
+      - name: Resumo
+        run: |
+          echo "📋 Análise de estrutura concluída"
+          echo "Erros: ${{ steps.structure.outputs.has_errors }}"
+          echo "Avisos: ${{ steps.structure.outputs.has_warnings }}"

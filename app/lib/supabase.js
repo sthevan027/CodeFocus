@@ -8,7 +8,13 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 // Cliente Supabase para uso no cliente (browser)
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// PKCE necessário para OAuth (GitHub, Google) com exchangeCodeForSession
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    flowType: 'pkce',
+    detectSessionInUrl: true,
+  },
+})
 
 // Cliente Supabase admin para uso no servidor (API Routes) - BYPASSA RLS
 // Use APENAS para healthchecks/admin (ex: deletar usuário do auth).

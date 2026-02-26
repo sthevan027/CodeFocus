@@ -99,7 +99,7 @@ export const TimerProvider = ({ children }) => {
 
     // Som
     if (settings.soundEnabled) {
-      notificationManager.playFocusCompleteSound();
+      notificationManager.playCycleCompleteSound();
     }
 
     // Auto-iniciar próximo ciclo
