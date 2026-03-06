@@ -5,6 +5,8 @@ import GitCommitModal from './GitCommitModal';
 import RepoSelector from './RepoSelector';
 import { loadSettings } from '../utils/settingsUtils';
 import apiService from '../services/apiService';
+import { createCycle } from '../services/cycleService';
+import { useTodayStats } from '../hooks/useTodayStats';
 
 const Timer = forwardRef((props, ref) => {
   const { user } = useAuth();
@@ -58,32 +60,8 @@ const Timer = forwardRef((props, ref) => {
   const [availableTags, setAvailableTags] = useState([]);
   const inputRef = useRef(null);
   const hasHandledCycleCompleteRef = useRef(false);
-  const [todayStats, setTodayStats] = useState({ sessions: 0, minutes: 0 });
-
-  // Calcular Quick Stats (Sessões hoje / Tempo total) - atualiza quando isRunning muda ou user muda
-  const refreshTodayStats = useCallback(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const userKey = user ? `codefocus-history-${user.id}` : 'codefocus-history';
-      const raw = localStorage.getItem(userKey) || '[]';
-      const history = JSON.parse(raw);
-      const today = new Date().toDateString();
-      const todaySessions = Array.isArray(history)
-        ? history.filter((s) => s?.type === 'session' && new Date(s.timestamp).toDateString() === today)
-        : [];
-      const totalSeconds = todaySessions.reduce((t, s) => t + (s.duration || 0), 0);
-      setTodayStats({
-        sessions: todaySessions.length,
-        minutes: Math.round(totalSeconds / 60),
-      });
-    } catch {
-      setTodayStats({ sessions: 0, minutes: 0 });
-    }
-  }, [user]);
-
-  useEffect(() => {
-    refreshTodayStats();
-  }, [refreshTodayStats, isRunning]);
+  const lastCreatedCycleIdRef = useRef(null);
+  const [todayStats, refreshTodayStats] = useTodayStats(user, isRunning);
 
   // Atualizar settings quando localStorage mudar (SettingsScreen)
   useEffect(() => {
@@ -221,9 +199,16 @@ const Timer = forwardRef((props, ref) => {
       // Calcular duração da sessão
       const sessionDuration = getPhaseDuration(currentPhase);
       
-      // Salvar sessão
+      // Salvar sessão (localStorage + Supabase)
       saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
-      refreshTodayStats(); // Atualizar Quick Stats imediatamente após salvar
+      createCycle({
+        name: cycleName || `${currentPhase} session`,
+        durationSeconds: sessionDuration,
+        phase: currentPhase
+      }).then((cycle) => {
+        if (cycle?.id) lastCreatedCycleIdRef.current = cycle.id;
+        refreshTodayStats();
+      });
 
       // Contabilizar ciclos de foco para decidir pausa curta/longa
       let nextBreakPhase = 'shortBreak';
@@ -357,7 +342,11 @@ const Timer = forwardRef((props, ref) => {
     notificationManager.notifyCycleComplete(currentPhase);
     const sessionDuration = getPhaseDuration(currentPhase) - timeLeft;
     saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
-    refreshTodayStats();
+    createCycle({
+      name: cycleName || `${currentPhase} session`,
+      durationSeconds: sessionDuration,
+      phase: currentPhase
+    }).then(() => refreshTodayStats());
     if (currentPhase === 'focus') {
       const nextCount = getFocusCount() + 1;
       setFocusCount(nextCount);
@@ -775,8 +764,13 @@ const Timer = forwardRef((props, ref) => {
           setShowGitModal(false);
           setShowNoteModal(false);
           notificationManager.showToast('Commit registrado!', 'Hora do descanso.', 'success');
-          // Caso 1: Timer chegou a zero (pendingBreakPhase já definido)
+          // Caso 1: Timer chegou a zero (pendingBreakPhase já definido) - atualizar ciclo com git_commit
           if (pendingBreakPhase) {
+            const cycleId = lastCreatedCycleIdRef.current;
+            if (cycleId && result?.message) {
+              apiService.updateCycle(cycleId, { git_commit: result.message }).catch(() => {});
+            }
+            lastCreatedCycleIdRef.current = null;
             if (pendingBreakPhase === 'shortBreak') startShortBreak();
             else if (pendingBreakPhase === 'longBreak') startLongBreak();
             notificationManager.notifyPauseStarted(pendingBreakPhase);
@@ -788,8 +782,13 @@ const Timer = forwardRef((props, ref) => {
             setIsRunning(false);
             const durationWorked = Math.max(0, getPhaseDuration('focus') - timeLeft);
             saveSession(durationWorked, 'focus', cycleName, selectedTags, sessionNote);
+            createCycle({
+              name: cycleName || 'focus session',
+              durationSeconds: durationWorked,
+              phase: 'focus',
+              gitCommit: result?.message
+            }).then(() => refreshTodayStats());
             setSelectedTags([]);
-            refreshTodayStats();
             const nextCount = getFocusCount() + 1;
             setFocusCount(nextCount);
             const every = settings.cycles_before_long_break || 4;
