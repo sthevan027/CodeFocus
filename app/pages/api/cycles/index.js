@@ -18,6 +18,8 @@ export default async function handler(req, res) {
           name: validatedData.name,
           duration: validatedData.duration,
           phase: validatedData.phase,
+          completed: validatedData.completed ?? true,
+          interrupted: false,
           git_commit: validatedData.git_commit,
           git_files: validatedData.git_files
         })

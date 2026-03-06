@@ -34,7 +34,8 @@ export const cycleSchema = z.object({
     errorMap: () => ({ message: 'Fase inválida' })
   }),
   git_commit: z.string().optional(),
-  git_files: z.string().optional()
+  git_files: z.string().optional(),
+  completed: z.boolean().optional().default(true) // Ciclos criados pelo Timer são sempre completados
 })
 
 // Validação de atualização de ciclo
