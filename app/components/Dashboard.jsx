@@ -10,6 +10,7 @@ const Dashboard = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState('overview');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [usingOfflineFallback, setUsingOfflineFallback] = useState(false);
   const [stats, setStats] = useState({
     todayFocus: 0,
     weekFocus: 0,
@@ -30,6 +31,7 @@ const Dashboard = ({ onClose }) => {
     if (!user) return;
     setLoading(true);
     setError(null);
+    setUsingOfflineFallback(false);
     try {
       const today = new Date().toISOString().slice(0, 10);
       const [overview, daily, weekly, cycles] = await Promise.all([
@@ -80,6 +82,51 @@ const Dashboard = ({ onClose }) => {
       });
     } catch (err) {
       console.error('Erro ao carregar dados do dashboard:', err);
+      // Fallback: dados locais quando API falha (offline, 401, etc.)
+      try {
+        const userKey = user?.id ? `codefocus-history-${user.id}` : 'codefocus-history';
+        const raw = localStorage.getItem(userKey) || '[]';
+        const history = JSON.parse(raw);
+        const sessions = Array.isArray(history) ? history.filter((s) => s?.type === 'session') : [];
+        const today = new Date().toDateString();
+        const todaySessions = sessions.filter((s) => new Date(s.timestamp).toDateString() === today);
+        const todayFocus = Math.round(todaySessions.reduce((t, s) => t + (s.duration || 0), 0) / 60);
+        const weekStart = new Date();
+        weekStart.setDate(weekStart.getDate() - 7);
+        const weekSessions = sessions.filter((s) => new Date(s.timestamp) >= weekStart);
+        const weekFocus = Math.round(weekSessions.reduce((t, s) => t + (s.duration || 0), 0) / 60);
+        const weeklyGoal = 40;
+        const weeklyProgress = Math.min(Math.round((weekFocus / (weeklyGoal * 60)) * 100), 100);
+        const recentActivities = sessions.slice(0, 20).map((s) => ({
+          id: s.id,
+          name: s.name || `${s.phase} session`,
+          phase: s.phase,
+          duration: s.duration || 0,
+          timestamp: s.timestamp,
+          tags: s.tags || []
+        }));
+        setStats({
+          todayFocus,
+          weekFocus,
+          totalCycles: sessions.length,
+          productivity: Math.min(100, Math.round((sessions.length / 4) * 25)),
+          totalFocusTime: sessions.reduce((t, s) => t + (s.duration || 0), 0),
+          totalSessions: sessions.length,
+          averageSessionLength: sessions.length ? Math.round(sessions.reduce((t, s) => t + (s.duration || 0), 0) / sessions.length / 60) : 0,
+          weeklyProgress,
+          weeklyGoal,
+          tags: {},
+          recentActivities,
+          recentCommits: [],
+          dailyBreakdown: []
+        });
+        setError(null);
+        setUsingOfflineFallback(true);
+        setLoading(false);
+        return;
+      } catch (fallbackErr) {
+        console.error('Fallback localStorage falhou:', fallbackErr);
+      }
       setError(err.message || 'Erro ao carregar dados');
     } finally {
       setLoading(false);
@@ -132,6 +179,11 @@ const Dashboard = ({ onClose }) => {
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-white mb-2">Dashboard de Produtividade</h1>
         <p className="text-white/60 text-lg">Acompanhe seu progresso e melhore sua performance</p>
+        {usingOfflineFallback && (
+          <p className="mt-2 px-4 py-2 bg-amber-500/20 text-amber-200 rounded-lg text-sm">
+            Modo offline — exibindo dados locais. Reconecte para sincronizar com o Supabase.
+          </p>
+        )}
       </div>
 
       {/* Quick Stats Cards */}
