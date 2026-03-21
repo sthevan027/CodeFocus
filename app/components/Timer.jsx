@@ -201,13 +201,14 @@ const Timer = forwardRef((props, ref) => {
       
       // Salvar sessão (localStorage + Supabase)
       saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+      refreshTodayStats(); // Atualizar Quick Stats imediatamente (localStorage)
       createCycle({
         name: cycleName || `${currentPhase} session`,
         durationSeconds: sessionDuration,
         phase: currentPhase
       }).then((cycle) => {
         if (cycle?.id) lastCreatedCycleIdRef.current = cycle.id;
-        refreshTodayStats();
+        refreshTodayStats(); // Atualizar novamente após persistir no Supabase
       });
 
       // Contabilizar ciclos de foco para decidir pausa curta/longa
@@ -342,6 +343,7 @@ const Timer = forwardRef((props, ref) => {
     notificationManager.notifyCycleComplete(currentPhase);
     const sessionDuration = getPhaseDuration(currentPhase) - timeLeft;
     saveSession(sessionDuration, currentPhase, cycleName, selectedTags, sessionNote);
+    refreshTodayStats();
     createCycle({
       name: cycleName || `${currentPhase} session`,
       durationSeconds: sessionDuration,
@@ -782,6 +784,7 @@ const Timer = forwardRef((props, ref) => {
             setIsRunning(false);
             const durationWorked = Math.max(0, getPhaseDuration('focus') - timeLeft);
             saveSession(durationWorked, 'focus', cycleName, selectedTags, sessionNote);
+            refreshTodayStats();
             createCycle({
               name: cycleName || 'focus session',
               durationSeconds: durationWorked,
