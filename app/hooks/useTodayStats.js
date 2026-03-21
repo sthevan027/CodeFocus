@@ -42,16 +42,18 @@ export function useTodayStats(user, triggerRefresh = false) {
   const [stats, setStats] = useState({ sessions: 0, minutes: 0 })
 
   const refresh = useCallback(async () => {
-    const today = new Date().toISOString().slice(0, 10)
+    // Atualização imediata do localStorage (feedback instantâneo após saveSession)
+    const localStats = getTodayStatsFromLocalStorage(user?.id)
+    setStats(localStats)
+
     if (user?.id) {
       try {
+        const today = new Date().toISOString().slice(0, 10)
         const apiStats = await getTodayStatsFromApi(today)
         setStats(apiStats)
       } catch {
-        setStats(getTodayStatsFromLocalStorage(user.id))
+        // Fallback já aplicado acima
       }
-    } else {
-      setStats(getTodayStatsFromLocalStorage(user?.id))
     }
   }, [user?.id])
 
