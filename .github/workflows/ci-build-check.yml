@@ -51,7 +51,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          OUTPUT=$(pnpm lint 2>&1)
+          OUTPUT=$(pnpm run lint 2>&1)
           EXIT_CODE=$?
           echo "$OUTPUT"
 
@@ -94,7 +94,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          OUTPUT=$(pnpm test:ci 2>&1)
+          OUTPUT=$(pnpm run test:ci 2>&1)
           EXIT_CODE=$?
           echo "$OUTPUT"
 
@@ -137,7 +137,7 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          OUTPUT=$(pnpm build 2>&1)
+          OUTPUT=$(pnpm run build 2>&1)
           EXIT_CODE=$?
           echo "$OUTPUT"
 
@@ -173,7 +173,7 @@ jobs:
             printf '**Commit:** `%s`\n' '${{ github.sha }}'
             printf '**Autor:** @%s\n' '${{ github.actor }}'
             printf '**Workflow:** [Ver execução](%s/%s/actions/runs/%s)\n\n' '${{ github.server_url }}' '${{ github.repository }}' '${{ github.run_id }}'
-            printf '---\n\n'
+            printf -- '---\n\n'
 
             if [ "$LINT_STATUS" = "failure" ]; then
               printf '### ESLint - Problemas de Código\n\n```\n%s\n```\n\n' "$LINT_ERRORS"
@@ -193,7 +193,7 @@ jobs:
               printf '### Build - OK\n\n'
             fi
 
-            printf '---\n**Ação necessária:** Corrigir os erros acima antes de fazer merge.\n'
+            printf -- '---\n**Ação necessária:** Corrigir os erros acima antes de fazer merge.\n'
           } > body.txt
 
           echo "body<<$DELIM" >> $GITHUB_OUTPUT
