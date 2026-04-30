@@ -15,9 +15,9 @@
     "test:ci": "jest --ci"
   },
   "dependencies": {
-    "@supabase/ssr": "^0.8.0",
+    "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.0",
-    "bcryptjs": "^2.4.3",
+    "bcryptjs": "^3.0.3",
     "next": "^14.2.35",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -26,7 +26,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
-    "@types/bcryptjs": "^2.4.6",
+    "@types/bcryptjs": "^3.0.0",
     "@types/node": "^25.6.0",
     "@types/react": "^18.3.28",
     "@types/react-dom": "^18.3.7",
